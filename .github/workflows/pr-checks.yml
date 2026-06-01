@@ -1,0 +1,56 @@
+name: PR Checks
+
+# This workflow produces the "PR Gate" status check that branch protection requires.
+# It runs ONLY on pull requests into the protected branches (dev / test / main) —
+# pushes to feature branches are not affected.
+#
+# Flow it supports:  feature -> dev -> test -> main
+#
+# STARTER: right now it only has a placeholder check. We will add real jobs next
+# (frontend lint, backend tests, frontend tests, ...). Each new job should be added
+# to the `needs:` list of the "PR Gate" job below so the single required check keeps
+# reflecting the overall result — branch protection never has to change.
+
+on:
+  pull_request:
+    branches: [dev, test, main]
+
+permissions:
+  contents: read
+
+# Cancel an in-progress run when new commits are pushed to the same PR.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Placeholder check. Replace / add real jobs (lint, tests) next.
+  # ---------------------------------------------------------------------------
+  placeholder:
+    name: Placeholder check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Nothing to verify yet
+        run: echo "Starter PR check — real checks (frontend lint, tests) will be added here."
+
+  # ---------------------------------------------------------------------------
+  # Aggregator. This is the single status check required by branch protection.
+  # It passes only if every job it depends on passed. Add future jobs to `needs`.
+  # ---------------------------------------------------------------------------
+  pr-gate:
+    name: PR Gate
+    runs-on: ubuntu-latest
+    needs: [placeholder]
+    if: always()
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "Dependency results: ${{ join(needs.*.result, ', ') }}"
+          if echo "${{ join(needs.*.result, ',') }}" | grep -qE "failure|cancelled"; then
+            echo "::error::One or more PR checks failed."
+            exit 1
+          fi
+          echo "✅ All PR checks passed."
