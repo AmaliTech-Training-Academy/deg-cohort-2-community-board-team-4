@@ -21,6 +21,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
         }
+        System.out.println("now inside authService");
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
