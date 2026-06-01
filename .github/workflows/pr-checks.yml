@@ -6,10 +6,14 @@ name: PR Checks
 #
 # Flow it supports:  feature -> dev -> test -> main
 #
-# STARTER: right now it only has a placeholder check. We will add real jobs next
-# (frontend lint, backend tests, frontend tests, ...). Each new job should be added
-# to the `needs:` list of the "PR Gate" job below so the single required check keeps
-# reflecting the overall result — branch protection never has to change.
+# This workflow is optimized to be fast:
+# - Detects which top-level area changed (backend/frontend/data-engineering)
+# - Runs only the relevant build/lint jobs for the changed area
+# - Always runs lightweight repo-wide quality/security gates:
+#     * gitleaks  — secret scan over the PR commit range
+#     * trivy     — dependency vulnerabilities + IaC/config misconfiguration
+#
+# Unit tests are intentionally skipped for now (to be added later).
 
 on:
   pull_request:
@@ -17,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 # Cancel an in-progress run when new commits are pushed to the same PR.
 concurrency:
@@ -24,17 +29,249 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Placeholder check. Replace / add real jobs (lint, tests) next.
-  # ---------------------------------------------------------------------------
-  placeholder:
-    name: Placeholder check
+  changes:
+    name: Detect changed areas
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      data_engineering: ${{ steps.filter.outputs.data_engineering }}
+    steps:
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ github.token }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            data_engineering:
+              - 'data-engineering/**'
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Scan PR commit range
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Required by gitleaks-action v2 for organization-owned repos.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        with:
+          args: >-
+            --redact
+            --no-banner
+            --log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
+  # Quality/security scan, SCOPED to the changed area(s). Catches vulnerable
+  # dependencies (pom.xml / package.json / requirements.txt) and IaC/Dockerfile
+  # misconfig in the directory the PR actually touched.
+  # ADVISORY ONLY: every scan uses exit-code 0, so a CRITICAL/HIGH finding NEVER
+  # blocks the PR. The findings are written to the job's Step Summary so the
+  # reviewer can read them and decide before approving. To turn an area into a
+  # hard gate later, flip its step back to exit-code '1'.
+  # NOTE: repo-wide drift isn't continuously checked here — cover that with a
+  # scheduled full scan on main (separate workflow) if you want it.
+  trivy:
+    name: Trivy scan (deps & misconfig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: >-
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.data_engineering == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Nothing to verify yet
-        run: echo "Starter PR check — real checks (frontend lint, tests) will be added here."
+
+      - name: Scan backend
+        if: needs.changes.outputs.backend == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'        # advisory: report, never block the PR
+          format: table
+          output: trivy-backend.txt
+
+      - name: Scan frontend
+        if: needs.changes.outputs.frontend == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'        # advisory: report, never block the PR
+          format: table
+          output: trivy-frontend.txt
+
+      - name: Scan data-engineering
+        if: needs.changes.outputs.data_engineering == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: data-engineering
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'        # advisory: report, never block the PR
+          format: table
+          output: trivy-data-engineering.txt
+
+      # Surface the findings in the PR's checks view so the reviewer sees the
+      # CRITICAL/HIGH vulnerabilities without the scan blocking the merge.
+      - name: Report findings to PR summary
+        if: always()
+        run: |
+          {
+            echo "## 🔍 Trivy scan — advisory (does NOT block merge)"
+            echo ""
+            echo "CRITICAL/HIGH findings in the changed area(s) are listed below."
+            echo "Reviewer: please read these before approving."
+            echo ""
+            found=false
+            for area in backend frontend data-engineering; do
+              f="trivy-${area}.txt"
+              if [ -s "$f" ]; then
+                found=true
+                echo "### ${area}"
+                echo '```'
+                cat "$f"
+                echo '```'
+                echo ""
+              fi
+            done
+            if [ "$found" = false ]; then
+              echo "✅ No CRITICAL/HIGH findings in the scanned area(s)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  backend-build:
+    name: Backend - build & lint (Maven)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build (skip tests)
+        run: mvn -B -DskipTests package
+
+      # Advisory code-quality lint. Uses the bundled Google style so it works
+      # without committing a checkstyle config. Non-blocking for now: it surfaces
+      # violations as a red step but does not fail the PR gate, so the team can
+      # adopt a shared checkstyle.xml before enforcing it. Drop continue-on-error
+      # (and ideally pin a project config) to make this a hard gate.
+      - name: Lint (Checkstyle - advisory)
+        continue-on-error: true
+        run: mvn -B checkstyle:check -Dcheckstyle.config.location=google_checks.xml
+
+  frontend-build:
+    name: Frontend - build & lint (React)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No package-lock.json in the repo yet, so we can't use `npm ci` or
+      # setup-node's built-in npm cache (both require a lockfile). We cache the
+      # npm download cache keyed on package.json instead.
+      # TODO: commit frontend/package-lock.json, then switch to `npm ci` and
+      #       move caching to setup-node (cache: 'npm').
+      - name: Cache npm download cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      # CI=true makes react-scripts run ESLint and treat any warning as an
+      # error, so this build step doubles as the frontend lint gate.
+      - name: Build & lint (warnings are errors)
+        env:
+          CI: 'true'
+        run: npm run build
+
+  data-engineering-quality:
+    name: Data engineering - lint & syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.data_engineering == 'true'
+    defaults:
+      run:
+        working-directory: data-engineering
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # data-engineering is a uv project (pyproject.toml + uv.lock). uv installs
+      # the EXACT locked versions, so CI matches what developers run locally.
+      - name: Set up uv (with cache)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: data-engineering/uv.lock
+
+      - name: Install Python + locked deps (incl. dev tools)
+        run: |
+          uv python install 3.11
+          uv sync --extra dev --frozen      # --frozen = use uv.lock exactly
+
+      - name: Lint (ruff - project config)
+        run: uv run ruff check --output-format=github .
+
+      - name: Syntax check
+        run: uv run python -m compileall .
+
+      # Tests now exist (tests/test_seed.py) but are deferred for now.
+      # Enable when ready to enforce:
+      # - name: Tests
+      #   run: uv run pytest
 
   # ---------------------------------------------------------------------------
   # Aggregator. This is the single status check required by branch protection.
@@ -43,14 +280,36 @@ jobs:
   pr-gate:
     name: PR Gate
     runs-on: ubuntu-latest
-    needs: [placeholder]
+    timeout-minutes: 5
+    needs: [changes, gitleaks, trivy, backend-build, frontend-build, data-engineering-quality]
     if: always()
     steps:
       - name: Evaluate results
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+          # Always-run gates that must explicitly succeed (never 'skipped').
+          # Trivy is NOT here: it is scoped to changed areas and is legitimately
+          # 'skipped' on non-code PRs. If it runs and fails, the 'failure' grep
+          # below still catches it.
+          CHANGES: ${{ needs.changes.result }}
+          GITLEAKS: ${{ needs.gitleaks.result }}
         run: |
-          echo "Dependency results: ${{ join(needs.*.result, ', ') }}"
-          if echo "${{ join(needs.*.result, ',') }}" | grep -qE "failure|cancelled"; then
-            echo "::error::One or more PR checks failed."
+          echo "Dependency results: $RESULTS"
+
+          # Any failed or cancelled job fails the gate.
+          if echo "$RESULTS" | grep -qE 'failure|cancelled'; then
+            echo "::error::One or more PR checks failed or were cancelled."
             exit 1
           fi
+
+          # Conditional area builds (and Trivy) may legitimately be 'skipped',
+          # but the always-run gates must have actually succeeded — guard against
+          # a skipped/failed upstream silently turning the gate green.
+          for r in "$CHANGES" "$GITLEAKS"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A required gate did not succeed (result: $r)."
+              exit 1
+            fi
+          done
+
           echo "✅ All PR checks passed."
