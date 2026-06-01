@@ -16,7 +16,7 @@ name: PR Checks
 # Unit tests are intentionally skipped for now (to be added later).
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [dev, test, main]
 
 permissions:
