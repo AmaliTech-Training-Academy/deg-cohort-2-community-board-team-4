@@ -249,25 +249,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # data-engineering is a uv project (pyproject.toml + uv.lock). uv installs
+      # the EXACT locked versions, so CI matches what developers run locally.
+      - name: Set up uv (with cache)
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: data-engineering/requirements.txt
+          enable-cache: true
+          cache-dependency-glob: data-engineering/uv.lock
 
-      - name: Install deps
+      - name: Install Python + locked deps (incl. dev tools)
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          uv python install 3.11
+          uv sync --extra dev --frozen      # --frozen = use uv.lock exactly
 
-      - name: Lint (ruff - basic)
-        run: |
-          python -m pip install ruff
-          ruff check --select=E,F --output-format=github .
+      - name: Lint (ruff - project config)
+        run: uv run ruff check --output-format=github .
 
       - name: Syntax check
-        run: python -m compileall .
+        run: uv run python -m compileall .
+
+      # Tests now exist (tests/test_seed.py) but are deferred for now.
+      # Enable when ready to enforce:
+      # - name: Tests
+      #   run: uv run pytest
 
   # ---------------------------------------------------------------------------
   # Aggregator. This is the single status check required by branch protection.
