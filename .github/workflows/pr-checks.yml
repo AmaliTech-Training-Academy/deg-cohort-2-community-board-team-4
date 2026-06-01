@@ -6,10 +6,14 @@ name: PR Checks
 #
 # Flow it supports:  feature -> dev -> test -> main
 #
-# STARTER: right now it only has a placeholder check. We will add real jobs next
-# (frontend lint, backend tests, frontend tests, ...). Each new job should be added
-# to the `needs:` list of the "PR Gate" job below so the single required check keeps
-# reflecting the overall result — branch protection never has to change.
+# This workflow is optimized to be fast:
+# - Detects which top-level area changed (backend/frontend/data-engineering)
+# - Runs only the relevant build/lint jobs for the changed area
+# - Always runs lightweight repo-wide quality/security gates:
+#     * gitleaks  — secret scan over the PR commit range
+#     * trivy     — dependency vulnerabilities + IaC/config misconfiguration
+#
+# Unit tests are intentionally skipped for now (to be added later).
 
 on:
   pull_request:
@@ -17,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 # Cancel an in-progress run when new commits are pushed to the same PR.
 concurrency:
@@ -24,17 +29,176 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Placeholder check. Replace / add real jobs (lint, tests) next.
-  # ---------------------------------------------------------------------------
-  placeholder:
-    name: Placeholder check
+  changes:
+    name: Detect changed areas
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      data_engineering: ${{ steps.filter.outputs.data_engineering }}
+    steps:
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ github.token }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            data_engineering:
+              - 'data-engineering/**'
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Scan PR commit range
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          args: >-
+            --redact
+            --no-banner
+            --log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
+  # Repo-wide quality/security scan. Catches vulnerable dependencies
+  # (pom.xml / package.json / requirements.txt) and IaC/Dockerfile misconfig.
+  # Fails only on CRITICAL/HIGH with a known fix, to keep signal high.
+  trivy:
+    name: Trivy scan (deps & misconfig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Nothing to verify yet
-        run: echo "Starter PR check — real checks (frontend lint, tests) will be added here."
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+  backend-build:
+    name: Backend - build & lint (Maven)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build (skip tests)
+        run: mvn -B -DskipTests package
+
+      # Advisory code-quality lint. Uses the bundled Google style so it works
+      # without committing a checkstyle config. Non-blocking for now: it surfaces
+      # violations as a red step but does not fail the PR gate, so the team can
+      # adopt a shared checkstyle.xml before enforcing it. Drop continue-on-error
+      # (and ideally pin a project config) to make this a hard gate.
+      - name: Lint (Checkstyle - advisory)
+        continue-on-error: true
+        run: mvn -B checkstyle:check -Dcheckstyle.config.location=google_checks.xml
+
+  frontend-build:
+    name: Frontend - build & lint (React)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No package-lock.json in the repo yet, so we can't use `npm ci` or
+      # setup-node's built-in npm cache (both require a lockfile). We cache the
+      # npm download cache keyed on package.json instead.
+      # TODO: commit frontend/package-lock.json, then switch to `npm ci` and
+      #       move caching to setup-node (cache: 'npm').
+      - name: Cache npm download cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      # CI=true makes react-scripts run ESLint and treat any warning as an
+      # error, so this build step doubles as the frontend lint gate.
+      - name: Build & lint (warnings are errors)
+        env:
+          CI: 'true'
+        run: npm run build
+
+  data-engineering-quality:
+    name: Data engineering - lint & syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.data_engineering == 'true'
+    defaults:
+      run:
+        working-directory: data-engineering
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: data-engineering/requirements.txt
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Lint (ruff - basic)
+        run: |
+          python -m pip install ruff
+          ruff check --select=E,F --output-format=github .
+
+      - name: Syntax check
+        run: python -m compileall .
 
   # ---------------------------------------------------------------------------
   # Aggregator. This is the single status check required by branch protection.
@@ -43,14 +207,34 @@ jobs:
   pr-gate:
     name: PR Gate
     runs-on: ubuntu-latest
-    needs: [placeholder]
+    timeout-minutes: 5
+    needs: [changes, gitleaks, trivy, backend-build, frontend-build, data-engineering-quality]
     if: always()
     steps:
       - name: Evaluate results
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+          # Always-run gates that must explicitly succeed (never 'skipped').
+          CHANGES: ${{ needs.changes.result }}
+          GITLEAKS: ${{ needs.gitleaks.result }}
+          TRIVY: ${{ needs.trivy.result }}
         run: |
-          echo "Dependency results: ${{ join(needs.*.result, ', ') }}"
-          if echo "${{ join(needs.*.result, ',') }}" | grep -qE "failure|cancelled"; then
-            echo "::error::One or more PR checks failed."
+          echo "Dependency results: $RESULTS"
+
+          # Any failed or cancelled job fails the gate.
+          if echo "$RESULTS" | grep -qE 'failure|cancelled'; then
+            echo "::error::One or more PR checks failed or were cancelled."
             exit 1
           fi
+
+          # Conditional area builds may legitimately be 'skipped', but the
+          # always-run gates must have actually succeeded — guard against a
+          # skipped/failed upstream silently turning the gate green.
+          for r in "$CHANGES" "$GITLEAKS" "$TRIVY"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A required gate did not succeed (result: $r)."
+              exit 1
+            fi
+          done
+
           echo "✅ All PR checks passed."

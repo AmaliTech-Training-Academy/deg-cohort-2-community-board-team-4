@@ -8,11 +8,19 @@ name: Branch Protection (as code)
 #
 # Branching model enforced here:   feature -> dev -> test -> main
 #   - No direct pushes to dev / test / main for the TEAM (changes via Pull Request).
-#   - The repo ADMIN is exempt (enforce_admins=false) and may push directly — used to
-#     bootstrap the repo while CI is not ready yet.
+#   - MERGE POLICY:
+#       * dev        -> any team member may merge their own reviewed, green PR.
+#       * test, main -> ONLY REPO ADMINS may merge. Team members can open PRs into
+#                       them, but the final merge is admin-only.
+#     This is enforced with an empty push-restriction list on test/main: admins
+#     bypass push restrictions, everyone else is blocked from the merge/push.
+#     (enforce_admins stays false so admins remain the gatekeepers of test/main.)
 #   - Every PR needs at least 1 approving review.
-#   - CI gate (the "PR Gate" status check) is NOT required yet — re-enable once tests
-#     exist (see the "required_status_checks" note below).
+#   - CI gate: the "PR Gate" status check (.github/workflows/pr-checks.yml) is now
+#     REQUIRED on all three branches — a PR cannot merge until it is green.
+#   - NOTE: admins-only merge relies on branch push restrictions, which GitHub
+#     supports only on ORG-OWNED repos. This repo is org-owned
+#     (AmaliTech-Training-Academy), so it is supported.
 #
 # REQUIREMENT: the default GITHUB_TOKEN cannot edit branch protection.
 # Create a fine-grained or classic PAT with "Administration: write" (repo admin) on
@@ -117,23 +125,33 @@ jobs:
         run: |
           BRANCH="${{ matrix.branch }}"
 
-          # INTERIM RULES (bootstrapping — CI/tests not ready yet).
-          #
-          #  - No direct pushes for the TEAM: changes to dev/test/main must go through a
-          #    Pull Request with >= 1 approving review.
-          #  - enforce_admins=false  => the repo ADMIN is exempt and can push DIRECTLY.
-          #    On a personal repo you can't whitelist specific users (that's org-only),
-          #    so this is how "only the admin can push to main" is achieved: everyone
-          #    else is forced through PRs, the admin bypasses the rules.
-          #  - required_status_checks=null  => no CI gate yet (we don't have the checks).
-          #    RE-ENABLE LATER by replacing null with:
-          #        { "strict": true, "contexts": ["PR Gate"] }
-          #  - no force-push / no branch deletion.
           REQUIRED_REVIEWS=1
 
+          # CI gate now exists (.github/workflows/pr-checks.yml -> "PR Gate" check),
+          # so require it on every protected branch. strict=false avoids forcing a
+          # rebase when the base branch moves; the check itself must still be green.
+          STATUS_CHECKS='{ "strict": false, "contexts": ["PR Gate"] }'
+
+          # MERGE POLICY via push restrictions (org-owned repo only):
+          #   - dev:        restrictions=null  -> any team member can merge a reviewed PR.
+          #   - test/main:  empty restriction list -> only repo ADMINS can merge.
+          #                 Admins bypass push restrictions; everyone else is blocked
+          #                 from the final merge/push. Non-admins can still OPEN PRs.
+          if [ "$BRANCH" = "dev" ]; then
+            RESTRICTIONS="null"
+            MERGE_POLICY="Any team member may merge reviewed PRs"
+          else
+            RESTRICTIONS='{ "users": [], "teams": [], "apps": [] }'
+            MERGE_POLICY="Admins only (push-restricted)"
+          fi
+          echo "MERGE_POLICY=$MERGE_POLICY" >> "$GITHUB_ENV"
+
+          # enforce_admins=false: admins remain the gatekeepers of test/main (they
+          # bypass the empty restriction list to perform the merge). Setting it true
+          # here would deadlock test/main — nobody could ever merge.
           cat > rules.json <<EOF
           {
-            "required_status_checks": null,
+            "required_status_checks": ${STATUS_CHECKS},
             "enforce_admins": false,
             "required_pull_request_reviews": {
               "dismiss_stale_reviews": true,
@@ -145,7 +163,7 @@ jobs:
             "allow_force_pushes": false,
             "allow_deletions": false,
             "block_creations": false,
-            "restrictions": null
+            "restrictions": ${RESTRICTIONS}
           }
           EOF
 
@@ -174,10 +192,10 @@ jobs:
             echo "| Rule | Value |"
             echo "|------|-------|"
             echo "| Direct pushes (team) | ❌ blocked (PR required) |"
-            echo "| Direct pushes (admin) | ✅ allowed (enforce_admins=false) |"
+            echo "| Who can merge | ${MERGE_POLICY:-n/a} |"
             echo "| Approving reviews required | 1 |"
             echo "| Dismiss stale approvals | ✅ |"
-            echo "| Required CI check | ⏳ none yet (re-enable \`PR Gate\` later) |"
+            echo "| Required CI check | ✅ \`PR Gate\` |"
             echo "| Force pushes | ❌ |"
             echo "| Branch deletion | ❌ |"
           } >> "$GITHUB_STEP_SUMMARY"
