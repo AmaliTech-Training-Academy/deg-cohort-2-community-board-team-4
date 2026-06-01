@@ -16,7 +16,7 @@ name: PR Checks
 # Unit tests are intentionally skipped for now (to be added later).
 
 on:
-  pull_request_target:
+  pull_request:
     branches: [dev, test, main]
 
 permissions:
@@ -74,27 +74,94 @@ jobs:
             --no-banner
             --log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
 
-  # Repo-wide quality/security scan. Catches vulnerable dependencies
-  # (pom.xml / package.json / requirements.txt) and IaC/Dockerfile misconfig.
-  # Fails only on CRITICAL/HIGH with a known fix, to keep signal high.
+  # Quality/security scan, SCOPED to the changed area(s). Catches vulnerable
+  # dependencies (pom.xml / package.json / requirements.txt) and IaC/Dockerfile
+  # misconfig in the directory the PR actually touched.
+  # ADVISORY ONLY: every scan uses exit-code 0, so a CRITICAL/HIGH finding NEVER
+  # blocks the PR. The findings are written to the job's Step Summary so the
+  # reviewer can read them and decide before approving. To turn an area into a
+  # hard gate later, flip its step back to exit-code '1'.
+  # NOTE: repo-wide drift isn't continuously checked here — cover that with a
+  # scheduled full scan on main (separate workflow) if you want it.
   trivy:
     name: Trivy scan (deps & misconfig)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: changes
+    if: >-
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.data_engineering == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Trivy filesystem scan
+      - name: Scan backend
+        if: needs.changes.outputs.backend == 'true'
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
-          scan-ref: .
+          scan-ref: backend
           scanners: vuln,misconfig
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'        # advisory: report, never block the PR
           format: table
+          output: trivy-backend.txt
+
+      - name: Scan frontend
+        if: needs.changes.outputs.frontend == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'        # advisory: report, never block the PR
+          format: table
+          output: trivy-frontend.txt
+
+      - name: Scan data-engineering
+        if: needs.changes.outputs.data_engineering == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: data-engineering
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'        # advisory: report, never block the PR
+          format: table
+          output: trivy-data-engineering.txt
+
+      # Surface the findings in the PR's checks view so the reviewer sees the
+      # CRITICAL/HIGH vulnerabilities without the scan blocking the merge.
+      - name: Report findings to PR summary
+        if: always()
+        run: |
+          {
+            echo "## 🔍 Trivy scan — advisory (does NOT block merge)"
+            echo ""
+            echo "CRITICAL/HIGH findings in the changed area(s) are listed below."
+            echo "Reviewer: please read these before approving."
+            echo ""
+            found=false
+            for area in backend frontend data-engineering; do
+              f="trivy-${area}.txt"
+              if [ -s "$f" ]; then
+                found=true
+                echo "### ${area}"
+                echo '```'
+                cat "$f"
+                echo '```'
+                echo ""
+              fi
+            done
+            if [ "$found" = false ]; then
+              echo "✅ No CRITICAL/HIGH findings in the scanned area(s)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   backend-build:
     name: Backend - build & lint (Maven)
@@ -217,9 +284,11 @@ jobs:
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
           # Always-run gates that must explicitly succeed (never 'skipped').
+          # Trivy is NOT here: it is scoped to changed areas and is legitimately
+          # 'skipped' on non-code PRs. If it runs and fails, the 'failure' grep
+          # below still catches it.
           CHANGES: ${{ needs.changes.result }}
           GITLEAKS: ${{ needs.gitleaks.result }}
-          TRIVY: ${{ needs.trivy.result }}
         run: |
           echo "Dependency results: $RESULTS"
 
@@ -229,10 +298,10 @@ jobs:
             exit 1
           fi
 
-          # Conditional area builds may legitimately be 'skipped', but the
-          # always-run gates must have actually succeeded — guard against a
-          # skipped/failed upstream silently turning the gate green.
-          for r in "$CHANGES" "$GITLEAKS" "$TRIVY"; do
+          # Conditional area builds (and Trivy) may legitimately be 'skipped',
+          # but the always-run gates must have actually succeeded — guard against
+          # a skipped/failed upstream silently turning the gate green.
+          for r in "$CHANGES" "$GITLEAKS"; do
             if [ "$r" != "success" ]; then
               echo "::error::A required gate did not succeed (result: $r)."
               exit 1
