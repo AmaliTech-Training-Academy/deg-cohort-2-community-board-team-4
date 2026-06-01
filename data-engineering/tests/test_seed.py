@@ -10,33 +10,32 @@ Tests cover:
   - run() orchestrates seeding without errors
 """
 import random
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, Mock, patch, call
-
-import pytest
-from sqlalchemy import text
 
 # Import the functions to test
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add the scripts directory to sys.path so we can import seed
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.seed import (
+from scripts.seed import (  # noqa: E402
+    CATEGORIES,
+    DEFAULT_COMMENTS,
+    DEFAULT_POSTS,
+    DEFAULT_USERS,
+    TREND_WINDOW_DAYS,
+    parse_args,
     random_datetime,
     reset_tables,
-    seed_categories,
-    seed_users,
-    seed_posts,
-    seed_comments,
     run,
-    parse_args,
-    TREND_WINDOW_DAYS,
-    DEFAULT_USERS,
-    DEFAULT_POSTS,
-    DEFAULT_COMMENTS,
-    CATEGORIES,
+    seed_categories,
+    seed_comments,
+    seed_posts,
+    seed_users,
 )
 
 
@@ -70,10 +69,10 @@ class TestRandomDatetime:
         # Reset seed for reproducibility
         random.seed(42)
         dt1 = random_datetime()
-        
+
         random.seed(42)
         dt2 = random_datetime()
-        
+
         # Both should be valid datetimes
         assert dt1.tzinfo == timezone.utc
         assert dt2.tzinfo == timezone.utc
@@ -233,7 +232,7 @@ class TestSeedPosts:
 
         category_ids = [1, 2, 3]
         user_ids = [1, 2]
-        
+
         seed_posts(mock_conn, 9, category_ids, user_ids)
 
         # Extract category_id from each call
@@ -455,9 +454,7 @@ class TestRun:
     @patch("scripts.seed.seed_users")
     @patch("scripts.seed.seed_categories")
     @patch("scripts.seed.reset_tables")
-    def test_uses_transaction(
-        self, mock_reset, mock_cat, mock_users, mock_posts, mock_comments
-    ):
+    def test_uses_transaction(self, mock_reset, mock_cat, mock_users, mock_posts, mock_comments):
         """Should use engine.begin() for transaction context."""
         mock_cat.return_value = [1]
         mock_users.return_value = [1]
