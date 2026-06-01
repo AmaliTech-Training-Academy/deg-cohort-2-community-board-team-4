@@ -1,0 +1,85 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      # Dummy test values — not for production.
+      POSTGRES_DB: ${POSTGRES_DB:-communityboard_test}
+      POSTGRES_USER: ${POSTGRES_USER:-test_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-group: test
+        awslogs-stream: postgres
+        awslogs-create-group: "true"   
+
+  backend:
+    image: ${REGISTRY}/communityboard-backend:test-latest
+    ports:
+      - "8080:8080"
+    environment:
+      # Dummy test environment.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-communityboard_test}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-test_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      JWT_SECRET: ${JWT_SECRET:-dummy-test-secret-not-for-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-group: test
+        awslogs-stream: backend
+        awslogs-create-group: "true"
+
+  frontend:
+    image: ${REGISTRY}/communityboard-frontend:test-latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-group: test
+        awslogs-stream: frontend
+        awslogs-create-group: "true"
+
+  data-engineering:
+    image: ${REGISTRY}/communityboard-data-engineering:test-latest
+    environment:
+      # Dummy test environment — points at the test Postgres above.
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-communityboard_test}
+      DB_USER: ${POSTGRES_USER:-test_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-group: test
+        awslogs-stream: data-engineering
+        awslogs-create-group: "true"
+
+volumes:
+  pgdata:

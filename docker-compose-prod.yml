@@ -10,11 +10,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d communityboard"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   backend:
     build: ./backend
@@ -26,8 +21,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: communityboard-secret-key-amalitech-2024
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
 
   frontend:
     build: ./frontend
@@ -35,18 +29,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-
-  data-engineering:
-    build: ./data-engineering
-    environment:
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: communityboard
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   pgdata:
