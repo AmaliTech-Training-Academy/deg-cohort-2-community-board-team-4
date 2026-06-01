@@ -34,20 +34,14 @@ jobs:
   ensure-branches:
     name: Ensure branches exist (main/dev/test)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: Validate admin token is present
-        env:
-          ADMIN_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
-        run: |
-          if [ -z "$ADMIN_TOKEN" ]; then
-            echo "::error::Secret BRANCH_PROTECTION_TOKEN is not set. Create a PAT with 'Administration: write' and add it as a repo secret."
-            exit 1
-          fi
-
       - name: Create missing branches (if any)
         env:
-          GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+          # Use the built-in token for git ref creation; the PAT is only needed for branch protection.
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
