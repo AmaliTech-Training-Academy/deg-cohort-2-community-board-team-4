@@ -1,11 +1,79 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-register',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
-  styleUrl: './register.component.scss'
+  styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
+  registerForm: FormGroup;
+  passwordVisible = false;
+  confirmPasswordVisible = false;
+  submitted = false;
 
+  constructor(private fb: FormBuilder, private router: Router) {
+    this.registerForm = this.fb.group({
+      fullName: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6), Validators.pattern(/[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\/;']/ )]],
+      confirmPassword: ['', Validators.required]
+    }, {
+      validators: this.passwordMatchValidator
+    });
+  }
+
+  get f() { return this.registerForm.controls; }
+
+  passwordMatchValidator(control: AbstractControl): { [key: string]: boolean } | null {
+    const password = control.get('password');
+    const confirmPassword = control.get('confirmPassword');
+    
+    if (password && confirmPassword && password.value !== confirmPassword.value) {
+      return { 'passwordMismatch': true };
+    }
+    return null;
+  }
+
+  togglePasswordVisibility(field: 'pass' | 'confirm'): void {
+    if (field === 'pass') {
+      this.passwordVisible = !this.passwordVisible;
+    } else {
+      this.confirmPasswordVisible = !this.confirmPasswordVisible;
+    }
+  }
+
+  
+  shouldShowBlurError(controlName: string, errorName: string): boolean {
+    const control = this.registerForm.get(controlName);
+    if (!control) return false;
+    return control.hasError(errorName) && (control.touched || this.submitted);
+  }
+
+  shouldShowPasswordHint(): boolean {
+    const control = this.registerForm.get('password');
+    if (!control) return false;
+    return !control.touched && !this.submitted && control.invalid;
+  }
+
+
+  shouldShowError(controlName: string, errorName: string): boolean {
+    const control = this.registerForm.get(controlName);
+    if (!control) return false;
+    return control.hasError(errorName) && (control.touched || control.dirty || this.submitted);
+  }
+
+  onSubmit(): void {
+    this.submitted = true;
+
+    if (this.registerForm.invalid) {
+      return;
+    }
+
+    console.log('Registration Data:', this.registerForm.value);
+  }
 }
