@@ -31,9 +31,78 @@ permissions:
   contents: read
 
 jobs:
+  ensure-branches:
+    name: Ensure branches exist (main/dev/test)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate admin token is present
+        env:
+          ADMIN_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "::error::Secret BRANCH_PROTECTION_TOKEN is not set. Create a PAT with 'Administration: write' and add it as a repo secret."
+            exit 1
+          fi
+
+      - name: Create missing branches (if any)
+        env:
+          GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+
+          DEFAULT_BRANCH="$(gh api -H "Accept: application/vnd.github+json" "/repos/$REPO" -q .default_branch)"
+          echo "Repo default branch: $DEFAULT_BRANCH"
+
+          DEFAULT_SHA="$(gh api -H "Accept: application/vnd.github+json" "/repos/$REPO/git/ref/heads/$DEFAULT_BRANCH" -q .object.sha)"
+          echo "Default branch SHA: $DEFAULT_SHA"
+
+          branch_exists() {
+            local b="$1"
+            gh api -H "Accept: application/vnd.github+json" "/repos/$REPO/branches/$b" >/dev/null 2>&1
+          }
+
+          create_branch_from_sha() {
+            local b="$1"
+            local sha="$2"
+            echo "Creating branch '$b' from $sha..."
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/git/refs" \
+              -f "ref=refs/heads/$b" \
+              -f "sha=$sha" >/dev/null
+            echo "✅ Created '$b'"
+          }
+
+          # Ensure main exists (some repos still start with 'master' or another default).
+          if branch_exists "main"; then
+            echo "Branch 'main' exists."
+          else
+            create_branch_from_sha "main" "$DEFAULT_SHA"
+          fi
+
+          # Prefer creating dev/test from main; fall back to default branch SHA.
+          if branch_exists "main"; then
+            MAIN_SHA="$(gh api -H "Accept: application/vnd.github+json" "/repos/$REPO/git/ref/heads/main" -q .object.sha)"
+          else
+            MAIN_SHA="$DEFAULT_SHA"
+          fi
+
+          for BR in dev test; do
+            if branch_exists "$BR"; then
+              echo "Branch '$BR' exists."
+            else
+              create_branch_from_sha "$BR" "$MAIN_SHA"
+            fi
+          done
+
   apply:
     name: Apply protection to ${{ matrix.branch }}
     runs-on: ubuntu-latest
+    needs: ensure-branches
     strategy:
       fail-fast: false
       matrix:
