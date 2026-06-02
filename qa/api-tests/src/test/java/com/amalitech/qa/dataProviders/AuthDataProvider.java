@@ -30,11 +30,21 @@ public class AuthDataProvider {
         };
     }
 
-    @DataProvider(name = "loginInvalid")
-    public Object[][] loginInvalidData() {
+    @DataProvider(name = "registerInvalid")
+    public Object[][] registerInvalidData() {
         return new Object[][] {
-                { JsonReader.getTestData("auth/login.json", "invalid_1") },
-                { JsonReader.getTestData("auth/login.json", "invalid_2") }
+                { JsonReader.getTestData("auth/register.json", "invalid_register_1") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_2") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_3") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_4") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_5") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_6") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_7") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_8") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_9") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_10") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_11") },
+                { JsonReader.getTestData("auth/register.json", "invalid_register_12") }
         };
     }
 }

@@ -24,6 +24,20 @@ public class AuthApiTest extends BaseTest {
                 .statusCode(201);
     }
 
+    // register invalid data
+    @Test(dataProvider = "registerInvalid", dataProviderClass = AuthDataProvider.class)
+    public void testRegisterInvalid(String body) {
+        given()
+                .contentType(ContentType.JSON)
+                .log().all()
+                .body(body)
+                .when()
+                .post("/auth/register")
+                .then()
+                .log().ifValidationFails()
+                .statusCode(400);
+    }
+
     // ✅ Register - duplicate email → 400 (runs twice)
     @Test(dataProvider = "registerDuplicate", dataProviderClass = AuthDataProvider.class)
     public void testRegisterDuplicateEmail(String body) {

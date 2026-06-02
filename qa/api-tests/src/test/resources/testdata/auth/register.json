@@ -2,19 +2,74 @@
   "success_1": {
     "email": "first@amalitech.com",
     "password": "passcode123!",
-    "username": "Lion"
+    "name": "Lion"
   },
   "success_2": {
     "email": "second@amalitech.com",
     "password": "passd123%",
-    "username": "kagozi"
+    "name": "kagozi"
   },
   "duplicate_email_1": {
     "email": "admin@amalitech.com",
-    "password": "password123"
+    "password": "password123",
+    "name": "umuntu"
   },
   "duplicate_email_2": {
     "email": "user@amalitech.com",
+    "password": "password123",
+    "name": "cow"
+  },
+  "invalid_register_1": {
+    "email": "      ",
+    "password": "password123",
+    "name": "Lion"
+  },
+  "invalid_register_2": {
+    "email": "people@g",
+    "password": "password123!",
+    "name": "Good"
+  },
+  "invalid_register_3": {
+    "email": "irumvaleon",
+    "password": "1",
+    "name": ""
+  },
+  "invalid_register_4": {},
+  "invalid_register_5": {
+    "email": "valid@test.com",
+    "password": "password123",
+    "name": ""
+  },
+  "invalid_register_6": {
+    "email": "valid@test.com",
+    "password": "",
+    "name": "TestUser"
+  },
+  "invalid_register_7": {
+    "email": "",
+    "password": "password123",
+    "name": "TestUser"
+  },
+  "invalid_register_8": {
+    "email": "notanemail",
+    "password": "password123",
+    "name": "TestUser"
+  },
+  "invalid_register_9": {
+    "email": "missing@.domain",
+    "password": "password123",
+    "name": "TestUser"
+  },
+  "invalid_register_10": {
+    "email": "valid@test.com",
+    "password": "password123"
+  },
+  "invalid_register_11": {
+    "email": "valid@test.com",
+    "name": "TestUser"
+  },
+  "invalid_register_12": {
+    "name": "TestUser",
     "password": "password123"
   }
 }
