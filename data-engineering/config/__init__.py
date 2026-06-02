@@ -35,6 +35,12 @@ DATABASE_URL = (
 APP_ENV = os.getenv("APP_ENV", "local").strip().lower()
 IS_PRODUCTION = APP_ENV == "production"
 
+# Where analytics.py writes its JSON datasets. Default: <package>/output.
+# Override with ANALYTICS_OUTPUT_DIR (e.g. a mounted volume in containers).
+ANALYTICS_OUTPUT_DIR = Path(
+    os.getenv("ANALYTICS_OUTPUT_DIR") or Path(__file__).resolve().parent.parent / "output"
+)
+
 # Non-secret settings from settings.toml (alongside this file).
 _SETTINGS_PATH = Path(__file__).resolve().parent / "settings.toml"
 with _SETTINGS_PATH.open("rb") as fh:
@@ -51,4 +57,5 @@ __all__ = [
     "SEED",
     "APP_ENV",
     "IS_PRODUCTION",
+    "ANALYTICS_OUTPUT_DIR",
 ]
