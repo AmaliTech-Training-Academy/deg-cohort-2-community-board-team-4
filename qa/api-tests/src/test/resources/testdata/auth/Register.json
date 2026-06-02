@@ -1,18 +1,22 @@
 {
-  "valid_1": {
+  "success_1": {
+    "name": "Test User One",
+    "email": "newuser1@test.com",
+    "password": "Pass123!"
+  },
+  "success_2": {
+    "name": "Test User Two",
+    "email": "newuser2@test.com",
+    "password": "Pass456!"
+  },
+  "duplicate_email_1": {
+    "name": "Admin User",
     "email": "admin@amalitech.com",
-    "password": "password123"
+    "password": "Pass123!"
   },
-  "valid_2": {
+  "duplicate_email_2": {
+    "name": "Regular User",
     "email": "user@amalitech.com",
-    "password": "password123"
-  },
-  "invalid_1": {
-    "email": "admin@amalitech.com",
-    "password": "wrongpassword"
-  },
-  "invalid_2": {
-    "email": "user@amalitech.com",
-    "password": "wrongpassword"
+    "password": "Pass456!"
   }
 }
