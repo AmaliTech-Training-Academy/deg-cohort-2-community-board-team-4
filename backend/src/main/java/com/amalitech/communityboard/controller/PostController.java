@@ -23,9 +23,14 @@ public class PostController {
         return ResponseEntity.ok(postService.getAllPosts(page, size));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
         return ResponseEntity.ok(postService.getPostById(id));
+    }
+
+    @GetMapping("/{slug}")
+    public ResponseEntity<PostResponse> getPostBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(postService.getPostBySlug(slug));
     }
 
     @PostMapping

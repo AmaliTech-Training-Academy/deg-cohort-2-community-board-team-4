@@ -52,6 +52,12 @@ public class PostService {
         return toResponse(post);
     }
 
+    public PostResponse getPostBySlug(String slug) {
+        Post post = postRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found with slug " + slug));
+        return toResponse(post);
+    }
+
     public PostResponse createPost(PostRequest request, Long userId) {
         User author = getUser(userId);
         Post post = Post.builder()
