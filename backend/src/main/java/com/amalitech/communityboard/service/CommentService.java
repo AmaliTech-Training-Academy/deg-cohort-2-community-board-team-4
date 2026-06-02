@@ -2,6 +2,7 @@ package com.amalitech.communityboard.service;
 
 import com.amalitech.communityboard.dto.*;
 import com.amalitech.communityboard.model.*;
+import com.amalitech.communityboard.exception.ForbiddenException;
 import com.amalitech.communityboard.exception.ResourceNotFoundException;
 import com.amalitech.communityboard.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +37,17 @@ public class CommentService {
         return toResponse(commentRepository.save(comment));
     }
 
-    // TODO: Implement deleteComment
-    // public void deleteComment(Long commentId, User author) { ... }
+    public void deleteComment(Long commentId, Long userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id " + commentId));
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
+        if (!comment.getAuthor().getId().equals(userId)
+                && !requester.getRole().name().equals("ADMIN")) {
+            throw new ForbiddenException("Not authorized to delete this comment");
+        }
+        commentRepository.delete(comment);
+    }
 
     private CommentResponse toResponse(Comment comment) {
         return CommentResponse.builder()

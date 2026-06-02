@@ -29,5 +29,11 @@ public class CommentController {
         return ResponseEntity.ok(commentService.createComment(postId, request, userId));
     }
 
-    // TODO: Add DELETE endpoint for deleting comments
+    @DeleteMapping("/api/comments/{id}")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId) {
+        commentService.deleteComment(id, userId);
+        return ResponseEntity.noContent().build();
+    }
 }
