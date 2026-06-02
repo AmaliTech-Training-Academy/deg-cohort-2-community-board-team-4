@@ -27,16 +27,16 @@ jobs:
       - name: Verify required secrets & variables
         env:
           EC2_DEV_HOST: ${{ secrets.EC2_DEV_HOST }}
-          EC2_DEV_USER: ${{ vars.EC2_DEV_USER }}
+          EC2_DEV_USER: ${{ secrets.EC2_DEV_USER }}
           EC2_DEV_SSH_KEY: ${{ secrets.EC2_DEV_SSH_KEY }}
-          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           missing=()
           [ -z "$EC2_DEV_HOST" ]       && missing+=("secret EC2_DEV_HOST")
           [ -z "$EC2_DEV_USER" ]       && missing+=("var EC2_DEV_USER")
           [ -z "$EC2_DEV_SSH_KEY" ]    && missing+=("secret EC2_DEV_SSH_KEY")
-          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("var DOCKERHUB_USERNAME")
+          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("secret DOCKERHUB_USERNAME")
           [ -z "$DOCKERHUB_TOKEN" ]    && missing+=("secret DOCKERHUB_TOKEN")
           if [ ${#missing[@]} -gt 0 ]; then
             printf '::error::Missing required CD config: %s\n' "${missing[*]}"
@@ -67,25 +67,25 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_DEV_HOST }}
-          username: ${{ vars.EC2_DEV_USER }}
+          username: ${{ secrets.EC2_DEV_USER }}
           key: ${{ secrets.EC2_DEV_SSH_KEY }}
-          port: ${{ vars.EC2_SSH_PORT || 22 }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
           source: docker-compose-dev.yml
-          target: ${{ vars.EC2_DEV_APP_DIR || '~/communityboard' }}
+          target: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
 
       # SSH in: sed the registry in, log in to Docker Hub, pull the :dev images
       # and (re)start the stack.
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          APP_DIR: ${{ vars.EC2_DEV_APP_DIR || '~/communityboard' }}
+          APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
         with:
           host: ${{ secrets.EC2_DEV_HOST }}
-          username: ${{ vars.EC2_DEV_USER }}
+          username: ${{ secrets.EC2_DEV_USER }}
           key: ${{ secrets.EC2_DEV_SSH_KEY }}
-          port: ${{ vars.EC2_SSH_PORT || 22 }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
           envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,APP_DIR
           script: |
             set -euo pipefail

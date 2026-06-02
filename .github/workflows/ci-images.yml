@@ -15,16 +15,16 @@ name: CI · Images (build · scan · push)
 #   main  -> :<full-sha>   + :latest              (immutable deploy tag = sha)
 #   other -> :<ref>-<shortsha>  (built/scanned, NOT pushed)
 #
-# Registry: Docker Hub. Required config (see devops/ci/README.md):
-#   vars.DOCKERHUB_USERNAME   Docker Hub account/org — used as the image
-#                             namespace AND the login username
-#   secrets.DOCKERHUB_TOKEN   Docker Hub access token (Account > Security)
-#   vars.REGISTRY             optional, default 'docker.io'
-#   vars.IMAGE_NAMESPACE      optional override for the namespace (default
-#                             = DOCKERHUB_USERNAME)
+# Registry: Docker Hub. Required config (all stored as repository SECRETS):
+#   secrets.DOCKERHUB_USERNAME   Docker Hub account/org — used as the image
+#                                namespace AND the login username
+#   secrets.DOCKERHUB_TOKEN      Docker Hub access token (Account > Security)
+#   secrets.REGISTRY             optional, default 'docker.io'
+#   secrets.IMAGE_NAMESPACE      optional override for the namespace (default
+#                                = DOCKERHUB_USERNAME)
 # Pushed images: docker.io/<namespace>/communityboard-<service>:<tag>
 #
-# Trivy is ADVISORY (exit-code 0). Flip vars.TRIVY_IMAGE_EXIT_CODE to '1' to
+# Trivy is ADVISORY (exit-code 0). Flip secrets.TRIVY_IMAGE_EXIT_CODE to '1' to
 # make a CRITICAL/HIGH image finding block the push.
 # ============================================================================
 
@@ -97,8 +97,8 @@ jobs:
       - name: Compute image metadata
         id: meta
         env:
-          REGISTRY: ${{ vars.REGISTRY || 'docker.io' }}
-          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || vars.DOCKERHUB_USERNAME }}
+          REGISTRY: ${{ secrets.REGISTRY || 'docker.io' }}
+          NAMESPACE: ${{ secrets.IMAGE_NAMESPACE || secrets.DOCKERHUB_USERNAME }}
           REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
@@ -125,8 +125,8 @@ jobs:
         if: steps.meta.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ${{ vars.REGISTRY || 'docker.io' }}
-          username: ${{ vars.DOCKERHUB_USERNAME }}
+          registry: ${{ secrets.REGISTRY || 'docker.io' }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Build ONCE, load into the local daemon for scanning + smoke test.
@@ -148,7 +148,7 @@ jobs:
           image-ref: ${{ steps.meta.outputs.local }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: ${{ vars.TRIVY_IMAGE_EXIT_CODE || '0' }}
+          exit-code: ${{ secrets.TRIVY_IMAGE_EXIT_CODE || '0' }}
           format: table
           output: trivy-image-${{ matrix.service }}.txt
 
