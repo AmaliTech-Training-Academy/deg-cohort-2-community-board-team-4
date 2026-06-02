@@ -49,7 +49,7 @@ public class AuthApiTest extends BaseTest {
                 .post("/auth/register")   // ← update when endpoint is known
                 .then()
                 .log().ifValidationFails()
-                .statusCode(400);
+                .statusCode(409);
     }
 
     // ✅ Login - valid credentials → JWT (runs twice)

@@ -8,9 +8,10 @@ public class AuthDataProvider {
 
     @DataProvider(name = "registerSuccess")
     public Object[][] registerSuccessData() {
+        String timestamp = String.valueOf(System.currentTimeMillis());
         return new Object[][] {
-                { JsonReader.getTestData("auth/register.json", "success_1") },
-                { JsonReader.getTestData("auth/register.json", "success_2") }
+                { "{\"email\": \"first_" + timestamp + "@amalitech.com\", \"password\": \"passcode123!\", \"name\": \"Lion\"}" },
+                { "{\"email\": \"second_" + timestamp + "@amalitech.com\", \"password\": \"passd123%\", \"name\": \"kagozi\"}" }
         };
     }
 
@@ -44,7 +45,15 @@ public class AuthDataProvider {
                 { JsonReader.getTestData("auth/register.json", "invalid_register_9") },
                 { JsonReader.getTestData("auth/register.json", "invalid_register_10") },
                 { JsonReader.getTestData("auth/register.json", "invalid_register_11") },
-                { JsonReader.getTestData("auth/register.json", "invalid_register_12") }
+                { JsonReader.getTestData("auth/register.json", "invalid_register_12") },
+                {JsonReader.getTestData("auth/register.json", "invalid_register_13")}
+        };
+    }
+    @DataProvider(name = "loginInvalid")
+    public Object[][] loginInvalidData() {
+        return new Object[][] {
+                { JsonReader.getTestData("auth/login.json", "invalid_1") },
+                { JsonReader.getTestData("auth/login.json", "invalid_2") }
         };
     }
 }

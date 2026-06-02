@@ -71,5 +71,10 @@
   "invalid_register_12": {
     "name": "TestUser",
     "password": "password123"
+  },
+  "invalid_register_13": {
+    "name": "!!!!!!!",
+    "password": "password123!",
+    "email": "irumvaleon@gmail.com"
   }
 }
