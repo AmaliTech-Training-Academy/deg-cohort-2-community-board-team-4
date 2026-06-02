@@ -1,0 +1,196 @@
+name: CI Pipeline
+
+# ============================================================================
+# Post-merge CI/CD pipeline.  Triggered on PUSH to the long-lived branches of
+# the flow  feature -> dev -> test -> main  (PRs are gated separately by
+# pr-checks.yml).
+#
+# This file is the ORCHESTRATOR. The actual work lives in reusable workflows
+# (ci-*.yml) called below, so each concern is a small, separately-readable file
+# while fail-fast ORDERING is still expressed here through `needs:`.
+#
+# Pipeline shape (fail-fast, parallel where safe):
+#
+#   changes ──► security      (advisory: gitleaks + trivy-fs + snyk, parallel)
+#           └─► unit-tests ──► qa ─────────────┐
+#               (GATE)         (GATE)          ├─► images ──► ci-gate
+#               per-area       compose+api/ui  │   build+scan(advisory)+push
+#               parallel       parallel        │   per-service parallel
+#                                              ┘
+#
+# Key behaviours (see devops/ci/README.md for the full rationale & secrets):
+#   * Folder-scoped: paths-filter decides which areas ran, so a frontend-only
+#     push never builds/tests the backend or data-engineering.
+#   * Fail-fast: a failed unit-test stops qa and images for that run.
+#   * Caching: maven / npm / uv / docker-buildx layers are all cached.
+#   * Advisory security: gitleaks, trivy and snyk REPORT but do not block
+#     (per team decision). Flip the documented toggles to make them gates.
+#   * Stage-based image tags on push:
+#       dev   -> :dev          + :dev-<shortsha>
+#       test  -> :test-latest  + :test-<shortsha>
+#       main  -> :<full-sha>   + :latest        (immutable deploy tag = sha)
+# ============================================================================
+
+on:
+  push:
+    branches: [dev, test, main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read        # image push authenticates to Docker Hub via DOCKERHUB_TOKEN
+
+# One run per branch; a newer push cancels the older in-progress run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Decide which top-level areas changed in this push. Everything downstream is
+  # gated on these outputs so we never run a pipeline for an untouched folder.
+  # --------------------------------------------------------------------------
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      data_engineering: ${{ steps.filter.outputs.data_engineering }}
+      any: ${{ steps.agg.outputs.any }}
+      qa: ${{ steps.agg.outputs.qa }}
+    steps:
+      - name: Checkout (history for push diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ github.token }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            data_engineering:
+              - 'data-engineering/**'
+
+      - name: Aggregate flags
+        id: agg
+        env:
+          B: ${{ steps.filter.outputs.backend }}
+          F: ${{ steps.filter.outputs.frontend }}
+          D: ${{ steps.filter.outputs.data_engineering }}
+        run: |
+          any=false; qa=false
+          if [ "$B" = "true" ] || [ "$F" = "true" ] || [ "$D" = "true" ]; then any=true; fi
+          # QA exercises the live backend (API) and frontend (UI), so it is
+          # only worth running when one of those two areas changed.
+          if [ "$B" = "true" ] || [ "$F" = "true" ]; then qa=true; fi
+          echo "any=$any" >> "$GITHUB_OUTPUT"
+          echo "qa=$qa"   >> "$GITHUB_OUTPUT"
+
+  # --------------------------------------------------------------------------
+  # Advisory security sweep. Runs in parallel with the gates below; never blocks
+  # the pipeline on its own (results land in the run's Step Summary).
+  # --------------------------------------------------------------------------
+  security:
+    name: Security
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    uses: ./.github/workflows/ci-security.yml
+    secrets: inherit
+    with:
+      backend: ${{ needs.changes.outputs.backend == 'true' }}
+      frontend: ${{ needs.changes.outputs.frontend == 'true' }}
+      data_engineering: ${{ needs.changes.outputs.data_engineering == 'true' }}
+
+  # --------------------------------------------------------------------------
+  # Unit tests per changed area (real GATE). Areas run as parallel jobs inside
+  # the reusable workflow.
+  # --------------------------------------------------------------------------
+  unit-tests:
+    name: Unit tests
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    uses: ./.github/workflows/ci-unit-tests.yml
+    secrets: inherit
+    with:
+      backend: ${{ needs.changes.outputs.backend == 'true' }}
+      frontend: ${{ needs.changes.outputs.frontend == 'true' }}
+      data_engineering: ${{ needs.changes.outputs.data_engineering == 'true' }}
+
+  # --------------------------------------------------------------------------
+  # QA: bring up the full stack with docker compose on the runner (localhost),
+  # then run the API and UI suites in parallel (real GATE). Only after unit
+  # tests pass.
+  # --------------------------------------------------------------------------
+  qa:
+    name: QA
+    needs: [changes, unit-tests]
+    if: needs.changes.outputs.qa == 'true' && needs.unit-tests.result == 'success'
+    uses: ./.github/workflows/ci-qa.yml
+    secrets: inherit
+
+  # --------------------------------------------------------------------------
+  # Build, vulnerability-scan and push the images for the changed areas.
+  # Runs only when unit tests passed AND qa either passed or was legitimately
+  # skipped (e.g. a data-engineering-only push). Per-service jobs run in
+  # parallel inside the reusable workflow.
+  # --------------------------------------------------------------------------
+  images:
+    name: Images
+    needs: [changes, unit-tests, qa]
+    if: >-
+      always() &&
+      needs.changes.outputs.any == 'true' &&
+      needs.unit-tests.result == 'success' &&
+      (needs.qa.result == 'success' || needs.qa.result == 'skipped')
+    uses: ./.github/workflows/ci-images.yml
+    secrets: inherit
+    with:
+      backend: ${{ needs.changes.outputs.backend == 'true' }}
+      frontend: ${{ needs.changes.outputs.frontend == 'true' }}
+      data_engineering: ${{ needs.changes.outputs.data_engineering == 'true' }}
+
+  # --------------------------------------------------------------------------
+  # Single aggregated status. Real gates (unit-tests, qa, images) must not have
+  # failed/been cancelled. `security` is advisory and is intentionally ignored.
+  # --------------------------------------------------------------------------
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes, security, unit-tests, qa, images]
+    if: always()
+    steps:
+      - name: Evaluate gates
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          UNIT: ${{ needs.unit-tests.result }}
+          QA: ${{ needs.qa.result }}
+          IMAGES: ${{ needs.images.result }}
+          SECURITY: ${{ needs.security.result }}
+        run: |
+          echo "changes=$CHANGES unit-tests=$UNIT qa=$QA images=$IMAGES (advisory) security=$SECURITY"
+
+          # changes must have succeeded — nothing can be trusted otherwise.
+          if [ "$CHANGES" != "success" ]; then
+            echo "::error::Change detection did not succeed (result: $CHANGES)."
+            exit 1
+          fi
+
+          # Real gates: failure or cancellation fails the pipeline. 'skipped'
+          # is allowed (the area legitimately didn't change).
+          for kv in "unit-tests=$UNIT" "qa=$QA" "images=$IMAGES"; do
+            name="${kv%%=*}"; res="${kv##*=}"
+            if [ "$res" = "failure" ] || [ "$res" = "cancelled" ]; then
+              echo "::error::Gate '$name' did not pass (result: $res)."
+              exit 1
+            fi
+          done
+
+          echo "✅ All required CI gates passed (security findings are advisory)."

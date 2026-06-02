@@ -1,0 +1,108 @@
+name: CD · Deploy to Dev
+
+
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [dev]
+
+permissions:
+  contents: read
+
+# Never run two dev deploys at once; let an in-flight deploy finish.
+concurrency:
+  group: cd-dev
+  cancel-in-progress: false
+
+jobs:
+  
+  validate:
+    name: Pre-flight checks
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify required secrets & variables
+        env:
+          EC2_DEV_HOST: ${{ secrets.EC2_DEV_HOST }}
+          EC2_DEV_USER: ${{ secrets.EC2_DEV_USER }}
+          EC2_DEV_SSH_KEY: ${{ secrets.EC2_DEV_SSH_KEY }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          missing=()
+          [ -z "$EC2_DEV_HOST" ]       && missing+=("secret EC2_DEV_HOST")
+          [ -z "$EC2_DEV_USER" ]       && missing+=("var EC2_DEV_USER")
+          [ -z "$EC2_DEV_SSH_KEY" ]    && missing+=("secret EC2_DEV_SSH_KEY")
+          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("secret DOCKERHUB_USERNAME")
+          [ -z "$DOCKERHUB_TOKEN" ]    && missing+=("secret DOCKERHUB_TOKEN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf '::error::Missing required CD config: %s\n' "${missing[*]}"
+            exit 1
+          fi
+          echo "✅ All required deploy config is present."
+
+  # --------------------------------------------------------------------------
+  # Deploy: ship the compose file and bring the stack up from the pushed images.
+  # --------------------------------------------------------------------------
+  deploy:
+    name: Deploy to EC2
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: dev
+    steps:
+      # Grab ONLY the compose file, at the exact commit CI just validated.
+      - name: Checkout compose file
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          sparse-checkout: docker-compose-dev.yml
+          sparse-checkout-cone-mode: false
+
+      # Copy just that one file to the EC2 (no source code).
+      - name: Copy compose file to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_DEV_HOST }}
+          username: ${{ secrets.EC2_DEV_USER }}
+          key: ${{ secrets.EC2_DEV_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          source: docker-compose-dev.yml
+          target: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
+
+      # SSH in: sed the registry in, log in to Docker Hub, pull the :dev images
+      # and (re)start the stack.
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
+        with:
+          host: ${{ secrets.EC2_DEV_HOST }}
+          username: ${{ secrets.EC2_DEV_USER }}
+          key: ${{ secrets.EC2_DEV_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,APP_DIR
+          script: |
+            set -euo pipefail
+            cd "$APP_DIR"
+
+            # Inject the Docker Hub namespace into the image references.
+            sed -i "s#__REGISTRY__#${DOCKERHUB_USERNAME}#g" docker-compose-dev.yml
+            echo "----- image references -----"
+            grep 'image:' docker-compose-dev.yml
+
+            # Authenticate so the pull works for private repos.
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+            # Pull the freshly pushed :dev images and roll the stack.
+            docker compose -f docker-compose-dev.yml pull
+            docker compose -f docker-compose-dev.yml up -d
+
+            docker logout || true
+            docker image prune -f || true
+            docker compose -f docker-compose-dev.yml ps
