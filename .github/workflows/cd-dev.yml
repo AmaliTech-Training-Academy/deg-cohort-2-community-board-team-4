@@ -71,7 +71,7 @@ jobs:
           key: ${{ secrets.EC2_DEV_SSH_KEY }}
           port: ${{ secrets.EC2_SSH_PORT || 22 }}
           source: docker-compose-dev.yml
-          target: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
+          target: ${{ secrets.EC2_DEV_APP_DIR || 'communityboard' }}
 
       # SSH in: sed the registry in, log in to Docker Hub, pull the :dev images
       # and (re)start the stack.
@@ -80,7 +80,7 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || '~/communityboard' }}
+          APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || 'communityboard' }}
         with:
           host: ${{ secrets.EC2_DEV_HOST }}
           username: ${{ secrets.EC2_DEV_USER }}
@@ -89,6 +89,9 @@ jobs:
           envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,APP_DIR
           script: |
             set -euo pipefail
+            # Bash does NOT expand a leading ~ from a variable, so do it ourselves.
+            APP_DIR="${APP_DIR/#\~/$HOME}"
+            mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
             # Inject the Docker Hub namespace into the image references.
