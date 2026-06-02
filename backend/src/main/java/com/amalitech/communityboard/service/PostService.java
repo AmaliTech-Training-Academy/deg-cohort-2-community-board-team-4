@@ -3,6 +3,7 @@ package com.amalitech.communityboard.service;
 import com.amalitech.communityboard.dto.*;
 import com.amalitech.communityboard.model.*;
 import com.amalitech.communityboard.repository.*;
+import com.amalitech.communityboard.util.SlugUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class PostService {
     public PostResponse createPost(PostRequest request, User author) {
         Post post = Post.builder()
                 .title(request.getTitle())
+                .slug(generateUniqueSlug(request.getTitle()))
                 .content(request.getContent())
                 .author(author)
                 .createdAt(LocalDateTime.now())
@@ -72,10 +74,22 @@ public class PostService {
     // TODO: Implement search functionality
     // public Page<PostResponse> searchPosts(String query, Pageable pageable) { ... }
 
+    private String generateUniqueSlug(String title) {
+        String base = SlugUtil.toSlug(title);
+        String candidate = base;
+        int suffix = 2;
+        while (postRepository.existsBySlug(candidate)) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
     private PostResponse toResponse(Post post) {
         return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
+                .slug(post.getSlug())
                 .content(post.getContent())
                 .categoryName(post.getCategory() != null ? post.getCategory().getName() : null)
                 .categoryId(post.getCategory() != null ? post.getCategory().getId() : null)

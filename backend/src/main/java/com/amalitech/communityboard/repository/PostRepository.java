@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    boolean existsBySlug(String slug);
     List<Post> findByCategoryIdOrderByCreatedAtDesc(Long categoryId);
     List<Post> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
     // TODO: Add search methods - findByTitleContainingIgnoreCase, full-text search
