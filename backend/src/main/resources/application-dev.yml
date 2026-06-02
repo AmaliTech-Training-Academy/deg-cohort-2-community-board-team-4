@@ -5,16 +5,17 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
-      ddl-auto: update
-    defer-datasource-initialization: true
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
   sql:
     init:
-      mode: always
+      mode: never
 
 jwt:
   secret: ${JWT_SECRET:communityboard-secret-key-amalitech-2024}
