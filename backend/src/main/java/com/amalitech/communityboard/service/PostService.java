@@ -58,6 +58,14 @@ public class PostService {
         return toResponse(post);
     }
 
+    /** Looks up a post by numeric id, or by slug otherwise. */
+    public PostResponse getPostByIdOrSlug(String identifier) {
+        if (identifier.matches("\\d+")) {
+            return getPostById(Long.parseLong(identifier));
+        }
+        return getPostBySlug(identifier);
+    }
+
     public PostResponse createPost(PostRequest request, Long userId) {
         User author = getUser(userId);
         Post post = Post.builder()
