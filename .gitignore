@@ -11,3 +11,22 @@ build/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Python environments & packages
+.venv/
+.env.local
+*.egg-info/
+communityboard_etl.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+*.swp
+*.swo
+*~
