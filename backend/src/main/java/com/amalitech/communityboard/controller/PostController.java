@@ -1,7 +1,6 @@
 package com.amalitech.communityboard.controller;
 
 import com.amalitech.communityboard.dto.*;
-import com.amalitech.communityboard.model.User;
 import com.amalitech.communityboard.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,31 +23,32 @@ public class PostController {
         return ResponseEntity.ok(postService.getAllPosts(page, size));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
-        return ResponseEntity.ok(postService.getPostById(id));
+    // Single route for both /api/posts/{id} and /api/posts/{slug};
+    @GetMapping("/{identifier}")
+    public ResponseEntity<PostResponse> getPost(@PathVariable String identifier) {
+        return ResponseEntity.ok(postService.getPostByIdOrSlug(identifier));
     }
 
     @PostMapping
     public ResponseEntity<PostResponse> createPost(
             @Valid @RequestBody PostRequest request,
-            @AuthenticationPrincipal User author) {
-        return ResponseEntity.ok(postService.createPost(request, author));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(postService.createPost(request, userId));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
             @Valid @RequestBody PostRequest request,
-            @AuthenticationPrincipal User author) {
-        return ResponseEntity.ok(postService.updatePost(id, request, author));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(postService.updatePost(id, request, userId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(
             @PathVariable Long id,
-            @AuthenticationPrincipal User author) {
-        postService.deletePost(id, author);
+            @AuthenticationPrincipal Long userId) {
+        postService.deletePost(id, userId);
         return ResponseEntity.noContent().build();
     }
 

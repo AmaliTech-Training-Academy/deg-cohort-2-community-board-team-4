@@ -15,12 +15,14 @@ name: CI · Images (build · scan · push)
 #   main  -> :<full-sha>   + :latest              (immutable deploy tag = sha)
 #   other -> :<ref>-<shortsha>  (built/scanned, NOT pushed)
 #
-# Registry (defaults to GHCR, zero extra config — uses the built-in token):
-#   vars.REGISTRY            default ghcr.io
-#   vars.IMAGE_NAMESPACE     default <repo owner>  (lowercased)
-#   vars.REGISTRY_USERNAME   default github.actor
-#   secrets.REGISTRY_PASSWORD default GITHUB_TOKEN
-# See devops/ci/README.md.
+# Registry: Docker Hub. Required config (see devops/ci/README.md):
+#   vars.DOCKERHUB_USERNAME   Docker Hub account/org — used as the image
+#                             namespace AND the login username
+#   secrets.DOCKERHUB_TOKEN   Docker Hub access token (Account > Security)
+#   vars.REGISTRY             optional, default 'docker.io'
+#   vars.IMAGE_NAMESPACE      optional override for the namespace (default
+#                             = DOCKERHUB_USERNAME)
+# Pushed images: docker.io/<namespace>/communityboard-<service>:<tag>
 #
 # Trivy is ADVISORY (exit-code 0). Flip vars.TRIVY_IMAGE_EXIT_CODE to '1' to
 # make a CRITICAL/HIGH image finding block the push.
@@ -40,8 +42,7 @@ on:
         default: false
 
 permissions:
-  contents: read
-  packages: write
+  contents: read   # Docker Hub auth is via DOCKERHUB_TOKEN, not the GITHUB_TOKEN
 
 # Serialize image build+push per branch so two runs don't race on the same
 # mutable tag (:dev, :test-latest). cancel-in-progress is FALSE here: never
@@ -96,8 +97,8 @@ jobs:
       - name: Compute image metadata
         id: meta
         env:
-          REGISTRY: ${{ vars.REGISTRY || 'ghcr.io' }}
-          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
+          REGISTRY: ${{ vars.REGISTRY || 'docker.io' }}
+          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || vars.DOCKERHUB_USERNAME }}
           REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
@@ -120,13 +121,13 @@ jobs:
           echo "service=${{ matrix.service }} push=$push"
           echo "tags=$tags"
 
-      - name: Log in to registry
+      - name: Log in to Docker Hub
         if: steps.meta.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ${{ vars.REGISTRY || 'ghcr.io' }}
-          username: ${{ vars.REGISTRY_USERNAME || github.actor }}
-          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+          registry: ${{ vars.REGISTRY || 'docker.io' }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Build ONCE, load into the local daemon for scanning + smoke test.
       # GHA layer cache makes repeat builds fast.

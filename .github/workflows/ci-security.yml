@@ -126,7 +126,9 @@ jobs:
                 echo ""
               fi
             done
-            [ "$found" = false ] && echo "✅ No CRITICAL/HIGH findings in the scanned area(s)."
+            if [ "$found" = false ]; then
+              echo "✅ No CRITICAL/HIGH findings in the scanned area(s)."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Snyk SCA. Only runs if SNYK_TOKEN is configured; advisory otherwise the
