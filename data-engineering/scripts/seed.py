@@ -31,14 +31,14 @@ from sqlalchemy.engine import Engine
 
 # Allow `python scripts/seed.py` to import sibling modules from the package root.
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from config import DATABASE_URL, SEED  # noqa: E402
+from config import APP_ENV, DATABASE_URL, IS_PRODUCTION, SEED  # noqa: E402
 from utils import get_logger  # noqa: E402
 
 logger = get_logger("seed")
 
 # Defaults sourced from the [seed] table in config/settings.toml.
 DEFAULT_USERS = SEED.get("users", 15)
-DEFAULT_POSTS = SEED.get("posts", 52)        # >= 50, divisible by categories
+DEFAULT_POSTS = SEED.get("posts", 52)  # >= 50, divisible by categories
 DEFAULT_COMMENTS = SEED.get("comments", 220)  # >= 200
 TREND_WINDOW_DAYS = SEED.get("trend_window_days", 30)
 CATEGORIES = [(c["name"], c["description"]) for c in SEED.get("categories", [])]
@@ -67,12 +67,7 @@ def random_datetime(within_days: int = TREND_WINDOW_DAYS) -> datetime:
 def reset_tables(conn) -> None:
     """Truncate seeded tables and restart identity sequences."""
     logger.info("Resetting tables (comments, posts, categories, users)")
-    conn.execute(
-        text(
-            "TRUNCATE comments, posts, categories, users "
-            "RESTART IDENTITY CASCADE"
-        )
-    )
+    conn.execute(text("TRUNCATE comments, posts, categories, users " "RESTART IDENTITY CASCADE"))
 
 
 def seed_categories(conn) -> list[int]:
@@ -129,7 +124,7 @@ def seed_posts(conn, count: int, category_ids: list[int], user_ids: list[int]) -
         row = conn.execute(
             text(
                 "INSERT INTO posts "
-                "(title, slugs, content, category_id, author_id, created_at, updated_at) "
+                "(title, slug, content, category_id, author_id, created_at, updated_at) "
                 "VALUES (:title, :slug, :content, :category_id, :author_id, "
                 ":created_at, :updated_at) "
                 "RETURNING id"
@@ -155,15 +150,14 @@ def seed_comments(conn, count: int, post_ids: list[int], user_ids: list[int]) ->
         conn.execute(
             text(
                 "INSERT INTO comments "
-                "(content, post_id, author_id, created_at, updated_at) "
-                "VALUES (:content, :post_id, :author_id, :created_at, :updated_at)"
+                "(content, post_id, author_id, created_at) "
+                "VALUES (:content, :post_id, :author_id, :created_at)"
             ),
             {
                 "content": faker.paragraph(nb_sentences=2),
                 "post_id": random.choice(post_ids),
                 "author_id": random.choice(user_ids),
                 "created_at": created,
-                "updated_at": created,
             },
         )
     logger.info("Seeded %d comments", count)
@@ -188,11 +182,34 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--reset", action="store_true", help="Truncate seeded tables before inserting."
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Override the production safety guard (DANGEROUS).",
+    )
     return parser.parse_args(argv)
+
+
+def guard_environment(force: bool) -> None:
+    """Refuse to seed fake data into production unless explicitly forced.
+
+    seed.py writes Faker-generated rows with a shared, publicly-known
+    password hash — never safe for a real production database.
+    """
+    if IS_PRODUCTION and not force:
+        logger.error(
+            "Refusing to seed: APP_ENV=%r. Seeding writes fake data with a "
+            "shared password hash. Pass --force only if you are certain.",
+            APP_ENV,
+        )
+        raise SystemExit(1)
+    if IS_PRODUCTION and force:
+        logger.warning("APP_ENV=production but --force given; seeding anyway.")
 
 
 def main() -> None:
     args = parse_args()
+    guard_environment(args.force)
     engine = create_engine(DATABASE_URL)
     try:
         run(engine, args.users, args.posts, args.comments, args.reset)
