@@ -1,6 +1,6 @@
 package com.amalitech.communityboard.dto;
 
-import jakarta.validation.constraints.Email;
+import com.amalitech.communityboard.validation.ValidEmail;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -9,7 +9,8 @@ import lombok.*;
 public class RegisterRequest {
     @NotBlank
     private String name;
-    @Email @NotBlank
+    @NotBlank
+    @ValidEmail
     private String email;
     @NotBlank @Size(min = 6)
     private String password;

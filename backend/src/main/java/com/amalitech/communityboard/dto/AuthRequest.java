@@ -1,12 +1,13 @@
 package com.amalitech.communityboard.dto;
 
-import jakarta.validation.constraints.Email;
+import com.amalitech.communityboard.validation.ValidEmail;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class AuthRequest {
-    @Email @NotBlank
+    @NotBlank
+    @ValidEmail
     private String email;
     @NotBlank
     private String password;
