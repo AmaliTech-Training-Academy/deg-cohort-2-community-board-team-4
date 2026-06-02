@@ -1,0 +1,10 @@
+{
+  "missing_title": {
+    "content": "Content without title",
+    "categoryId": 1
+  },
+  "missing_content": {
+    "title": "Title without content",
+    "categoryId": 1
+  }
+}
