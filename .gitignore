@@ -43,3 +43,10 @@ ansible/*.pem
 crash.log
 *.tfvars
 ansible/vault.yml
+
+# Private keys / secrets (repo-wide — never commit SSH/TLS keys)
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
