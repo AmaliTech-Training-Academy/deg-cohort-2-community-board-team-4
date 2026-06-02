@@ -50,3 +50,7 @@ ansible/vault.yml
 *.ppk
 id_rsa*
 id_ed25519*
+
+# Ansible host inventory (repo-wide — contains server addresses)
+inventory.ini
+**/inventory.ini
