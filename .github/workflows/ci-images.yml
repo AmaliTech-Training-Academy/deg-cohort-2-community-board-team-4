@@ -1,0 +1,194 @@
+name: CI · Images (build · scan · push)
+
+# ============================================================================
+# Reusable image workflow, called by ci.yml. For every CHANGED area it:
+#   1. builds the image once (buildx, with GitHub Actions layer cache),
+#   2. Trivy-scans the built image for OS/library CVEs (advisory),
+#   3. smoke-checks that the image is runnable,
+#   4. pushes it to the registry with STAGE-BASED tags.
+# A dynamic matrix means only changed services get a job, and they run in
+# PARALLEL.
+#
+# Stage-based tags (from the branch this push is on):
+#   dev   -> :dev          + :dev-<shortsha>      (mutable rolling + traceable)
+#   test  -> :test-latest  + :test-<shortsha>     (matches docker-compose-staging)
+#   main  -> :<full-sha>   + :latest              (immutable deploy tag = sha)
+#   other -> :<ref>-<shortsha>  (built/scanned, NOT pushed)
+#
+# Registry (defaults to GHCR, zero extra config — uses the built-in token):
+#   vars.REGISTRY            default ghcr.io
+#   vars.IMAGE_NAMESPACE     default <repo owner>  (lowercased)
+#   vars.REGISTRY_USERNAME   default github.actor
+#   secrets.REGISTRY_PASSWORD default GITHUB_TOKEN
+# See devops/ci/README.md.
+#
+# Trivy is ADVISORY (exit-code 0). Flip vars.TRIVY_IMAGE_EXIT_CODE to '1' to
+# make a CRITICAL/HIGH image finding block the push.
+# ============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      backend:
+        type: boolean
+        default: false
+      frontend:
+        type: boolean
+        default: false
+      data_engineering:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+# Serialize image build+push per branch so two runs don't race on the same
+# mutable tag (:dev, :test-latest). cancel-in-progress is FALSE here: never
+# interrupt an in-flight push — let it finish, then run the next. Distinct group
+# from the orchestrator (ci-<ref>) to avoid a caller/callee deadlock.
+concurrency:
+  group: ci-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Build the matrix of only-changed services so we never spawn empty jobs.
+  matrix:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      services: ${{ steps.set.outputs.services }}
+    steps:
+      - name: Build service list
+        id: set
+        env:
+          B: ${{ inputs.backend }}
+          F: ${{ inputs.frontend }}
+          D: ${{ inputs.data_engineering }}
+        run: |
+          list=""
+          [ "$B" = "true" ] && list="$list backend"
+          [ "$F" = "true" ] && list="$list frontend"
+          [ "$D" = "true" ] && list="$list data-engineering"
+          json=$(printf '%s\n' $list | sed '/^$/d' | jq -R . | jq -cs .)
+          echo "services=$json" >> "$GITHUB_OUTPUT"
+          echo "Planned services: $json"
+
+  build:
+    name: ${{ matrix.service }}
+    needs: matrix
+    if: needs.matrix.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.matrix.outputs.services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Resolve registry, image name, tags and whether to push.
+      - name: Compute image metadata
+        id: meta
+        env:
+          REGISTRY: ${{ vars.REGISTRY || 'ghcr.io' }}
+          NAMESPACE: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          ns=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+          short="${SHA:0:12}"
+          name="${REGISTRY}/${ns}/communityboard-${{ matrix.service }}"
+
+          case "$REF" in
+            dev)   tags="${name}:dev,${name}:dev-${short}"; push=true ;;
+            test)  tags="${name}:test-latest,${name}:test-${short}"; push=true ;;
+            main)  tags="${name}:${SHA},${name}:latest"; push=true ;;   # immutable = full sha
+            *)     tags="${name}:${REF//\//-}-${short}"; push=false ;;
+          esac
+
+          {
+            echo "tags=$tags"
+            echo "push=$push"
+            echo "local=local/${{ matrix.service }}:scan"
+          } >> "$GITHUB_OUTPUT"
+          echo "service=${{ matrix.service }} push=$push"
+          echo "tags=$tags"
+
+      - name: Log in to registry
+        if: steps.meta.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY || 'ghcr.io' }}
+          username: ${{ vars.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+
+      # Build ONCE, load into the local daemon for scanning + smoke test.
+      # GHA layer cache makes repeat builds fast.
+      - name: Build image (load for scan)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          load: true
+          tags: ${{ steps.meta.outputs.local }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # Container vulnerability scan. Advisory by default (exit-code 0).
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.meta.outputs.local }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: ${{ vars.TRIVY_IMAGE_EXIT_CODE || '0' }}
+          format: table
+          output: trivy-image-${{ matrix.service }}.txt
+
+      - name: Report image scan to summary
+        if: always()
+        run: |
+          {
+            echo "## 🐳 Trivy image scan — ${{ matrix.service }} (advisory)"
+            echo ""
+            if [ -s "trivy-image-${{ matrix.service }}.txt" ]; then
+              echo '```'
+              cat "trivy-image-${{ matrix.service }}.txt"
+              echo '```'
+            else
+              echo "✅ No CRITICAL/HIGH findings."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Smoke check: the built image must at least start. The backend needs a DB
+      # to stay up (covered by the QA stack), so for it we only verify the image
+      # is creatable; the others get a short run.
+      - name: Smoke check
+        run: |
+          img="${{ steps.meta.outputs.local }}"
+          if [ "${{ matrix.service }}" = "backend" ]; then
+            docker create "$img" >/dev/null && echo "backend image is runnable"
+          else
+            docker run --rm -d --name smoke-${{ matrix.service }} "$img" >/dev/null
+            sleep 5
+            docker ps --filter "name=smoke-${{ matrix.service }}" --format '{{.Status}}'
+            docker stop smoke-${{ matrix.service }} >/dev/null || true
+          fi
+
+      # Re-tag the already-built local image and push every stage tag. No
+      # rebuild — we just publish the scanned artifact.
+      - name: Push stage tags
+        if: steps.meta.outputs.push == 'true'
+        run: |
+          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
+          for t in "${TAGS[@]}"; do
+            echo "Pushing $t"
+            docker tag "${{ steps.meta.outputs.local }}" "$t"
+            docker push "$t"
+          done
