@@ -1,11 +1,13 @@
 {
   "success_1": {
-    "email": "admin@amalitech.com",
-    "password": "password123"
+    "email": "first@amalitech.com",
+    "password": "passcode123!",
+    "username": "Lion"
   },
   "success_2": {
-    "email": "user@amalitech.com",
-    "password": "password123"
+    "email": "second@amalitech.com",
+    "password": "passd123%",
+    "username": "kagozi"
   },
   "duplicate_email_1": {
     "email": "admin@amalitech.com",
