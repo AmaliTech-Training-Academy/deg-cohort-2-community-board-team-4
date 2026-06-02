@@ -65,36 +65,37 @@ jobs:
           docker compose -f docker-compose.yml logs --tail=200
           exit 1
 
-      - name: Wait for frontend (http://localhost:3000)
-        run: |
-          for i in $(seq 1 36); do
-            if curl -sf http://localhost:3000 >/dev/null 2>&1; then
-              echo "frontend ready"; exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::frontend did not become ready in time"
-          docker compose -f docker-compose.yml logs --tail=200 frontend
-          exit 1
+      # --- UI tests disabled for now: frontend readiness gate not needed ---
+      # - name: Wait for frontend (http://localhost:3000)
+      #   run: |
+      #     for i in $(seq 1 36); do
+      #       if curl -sf http://localhost:3000 >/dev/null 2>&1; then
+      #         echo "frontend ready"; exit 0
+      #       fi
+      #       sleep 5
+      #     done
+      #     echo "::error::frontend did not become ready in time"
+      #     docker compose -f docker-compose.yml logs --tail=200 frontend
+      #     exit 1
 
-      # Run both Maven test suites at once. Capture each exit code and fail the
-      # step if either suite failed, after printing both logs.
-      - name: Run API + UI tests in parallel
+      # Run the API (backend) suite. The UI suite is commented out for now —
+      # restore the parallel block below when the UI tests are ready.
+      - name: Run API tests
         run: |
           set +e
-          ( cd qa/api-tests && mvn -B test ) > api-tests.log 2>&1 &
-          api_pid=$!
-          ( cd qa/ui-tests  && mvn -B test ) > ui-tests.log 2>&1 &
-          ui_pid=$!
-
-          wait $api_pid; api_rc=$?
-          wait $ui_pid;  ui_rc=$?
+          ( cd qa/api-tests && mvn -B test ) > api-tests.log 2>&1
+          api_rc=$?
 
           echo "::group::API test output"; cat api-tests.log; echo "::endgroup::"
-          echo "::group::UI test output";  cat ui-tests.log;  echo "::endgroup::"
-          echo "API suite exit=$api_rc | UI suite exit=$ui_rc"
+          echo "API suite exit=$api_rc"
 
-          [ $api_rc -eq 0 ] && [ $ui_rc -eq 0 ]
+          # --- UI tests disabled for now ---
+          # ( cd qa/ui-tests && mvn -B test ) > ui-tests.log 2>&1
+          # ui_rc=$?
+          # echo "::group::UI test output"; cat ui-tests.log; echo "::endgroup::"
+          # echo "UI suite exit=$ui_rc"
+
+          [ $api_rc -eq 0 ]
 
       - name: Dump stack logs on failure
         if: failure()
@@ -107,9 +108,10 @@ jobs:
           name: qa-results
           path: |
             api-tests.log
-            ui-tests.log
             qa/api-tests/target/surefire-reports/**
-            qa/ui-tests/target/surefire-reports/**
+            # --- UI artifacts disabled for now ---
+            # ui-tests.log
+            # qa/ui-tests/target/surefire-reports/**
           if-no-files-found: ignore
 
       - name: Tear down

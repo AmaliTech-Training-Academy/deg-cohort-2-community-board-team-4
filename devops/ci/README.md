@@ -88,6 +88,32 @@ Images are pushed to **Docker Hub** as
 `docker.io/<DOCKERHUB_USERNAME>/communityboard-<service>:<tag>`. The image build
 runs but **skips the push** on any branch other than `dev`/`test`/`main`.
 
+## CD — deploy to Dev (`cd-dev.yml`)
+
+Runs automatically **after the CI Pipeline succeeds on `dev`** (via `workflow_run`),
+once the `:dev` images are on Docker Hub. It:
+1. **validate** — fails fast if any EC2 / Docker Hub config is missing.
+2. **deploy** — copies **only** `docker-compose-dev.yml` to the EC2 (no source
+   code), then over SSH: `sed`s `__REGISTRY__` → the Docker Hub namespace,
+   `docker login`, `docker compose pull` (grabs the new `:dev` tag), `up -d`.
+
+The dev stack runs from the **pulled** `:dev` images; `docker-compose-dev.yml`
+is static (pull-only, `:dev` tag, dummy dev env values).
+
+### Required CD configuration
+| Kind | Name | Purpose |
+|------|------|---------|
+| Secret | `EC2_DEV_HOST` | dev EC2 hostname / IP |
+| Secret | `EC2_DEV_SSH_KEY` | private SSH key for the EC2 user |
+| Variable | `EC2_DEV_USER` | SSH user (e.g. `ubuntu` / `ec2-user`) |
+| Variable | `DOCKERHUB_USERNAME` | Docker Hub namespace + login (shared with CI) |
+| Secret | `DOCKERHUB_TOKEN` | Docker Hub token (shared with CI) |
+| Variable | `EC2_SSH_PORT` | optional, default `22` |
+| Variable | `EC2_DEV_APP_DIR` | optional, default `~/communityboard` |
+
+The EC2 must have Docker + the Compose plugin installed; the deploy creates/uses
+`EC2_DEV_APP_DIR` and only ever places `docker-compose-dev.yml` there.
+
 > For the `docker-compose-staging.yml` / `docker-compose-prod.yml` files, set their
 > `REGISTRY` env to `<DOCKERHUB_USERNAME>` (or `docker.io/<DOCKERHUB_USERNAME>`) so
 > `${REGISTRY}/communityboard-<service>` resolves to the same images this pipeline pushes.
