@@ -3,11 +3,11 @@ ETL Pipeline for CommunityBoard Analytics
 Extracts data from application DB, transforms into analytics-ready format.
 """
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from config import DATABASE_URL
+from utils import get_engine
 
-engine = create_engine(DATABASE_URL)
+engine = get_engine()
 
 
 def extract_posts():
