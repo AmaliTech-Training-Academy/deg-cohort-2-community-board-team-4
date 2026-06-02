@@ -1,0 +1,33 @@
+# Non-secret settings for the data-engineering package.
+# Loaded by config/__init__.py. DB credentials are NOT here — see .env.
+
+[logging]
+# level:  DEBUG | INFO | WARNING | ERROR
+# format: text (local) | json (production / log aggregators)
+level = "INFO"
+format = "text"
+
+[seed]
+# Default volumes for scripts/seed.py (overridable via CLI flags).
+users = 15
+posts = 52       # >= 50, divisible by number of categories
+comments = 220   # >= 200
+trend_window_days = 30
+random_seed = 42
+
+# Categories: posts are distributed evenly across these (round-robin).
+[[seed.categories]]
+name = "NEWS"
+description = "Community news and announcements"
+
+[[seed.categories]]
+name = "EVENT"
+description = "Upcoming events and gatherings"
+
+[[seed.categories]]
+name = "DISCUSSION"
+description = "Open discussions and questions"
+
+[[seed.categories]]
+name = "ALERT"
+description = "Time-sensitive alerts and notices"
