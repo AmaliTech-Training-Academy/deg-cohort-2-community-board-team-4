@@ -3,7 +3,7 @@ package com.amalitech.qa.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
+import java.io.InputStream;
 
 public class JsonReader {
 
@@ -11,9 +11,9 @@ public class JsonReader {
 
     public static String getTestData(String filePath, String key) {
         try {
-            JsonNode root = mapper.readTree(
-                    new File("src/test/resources/testdata/" + filePath)
-            );
+            InputStream stream = JsonReader.class.getClassLoader().getResourceAsStream("testdata/" + filePath);
+            if (stream == null) throw new RuntimeException("File not found: testdata/" + filePath);
+            JsonNode root = mapper.readTree(stream);
             return mapper.writeValueAsString(root.get(key));
         } catch (Exception e) {
             throw new RuntimeException("Error reading JSON: " + filePath + " → " + key);

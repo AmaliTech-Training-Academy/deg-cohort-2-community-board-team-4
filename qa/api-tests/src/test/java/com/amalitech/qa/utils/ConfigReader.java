@@ -1,6 +1,6 @@
 package com.amalitech.qa.utils;
 
-import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.Properties;
 
 public class ConfigReader {
@@ -9,8 +9,9 @@ public class ConfigReader {
 
     static {
         try {
-            FileInputStream file = new FileInputStream("src/test/resources/config.properties");
-            properties.load(file);
+            InputStream stream = ConfigReader.class.getClassLoader().getResourceAsStream("config.properties");
+            if (stream == null) throw new RuntimeException("config.properties not found");
+            properties.load(stream);
         } catch (Exception e) {
             throw new RuntimeException("config.properties not found");
         }
