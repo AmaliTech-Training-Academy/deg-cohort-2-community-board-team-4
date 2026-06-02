@@ -18,12 +18,16 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PostService {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PostRepository postRepository;
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
 
     public Page<PostResponse> getAllPosts(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
         Page<Post> posts = postRepository.findAllByOrderByCreatedAtDesc(pageable);
         Map<Long, Integer> commentCounts = commentCountsFor(posts.getContent());
         return posts.map(post -> toResponse(post, commentCounts.getOrDefault(post.getId(), 0)));
