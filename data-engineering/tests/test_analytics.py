@@ -28,6 +28,7 @@ from analytics import (  # noqa: E402
     posts_per_day,
     run_export,
     top_contributors,
+    totals,
 )
 
 
@@ -35,6 +36,13 @@ def _mock_conn(rows):
     """A MagicMock connection whose execute(...).all() returns `rows`."""
     conn = MagicMock()
     conn.execute.return_value.all.return_value = rows
+    return conn
+
+
+def _mock_conn_one(row):
+    """A MagicMock connection whose execute(...).one() returns `row`."""
+    conn = MagicMock()
+    conn.execute.return_value.one.return_value = row
     return conn
 
 
@@ -124,6 +132,18 @@ class TestTopContributors:
         assert top_contributors(_mock_conn([])) == []
 
 
+class TestTotals:
+    def test_maps_counts_to_record(self):
+        conn = _mock_conn_one(SimpleNamespace(total_posts=52, total_comments=220, total_users=15))
+        result = totals(conn)
+        assert result == [{"total_posts": 52, "total_comments": 220, "total_users": 15}]
+
+    def test_counts_are_ints(self):
+        conn = _mock_conn_one(SimpleNamespace(total_posts=0, total_comments=0, total_users=0))
+        rec = totals(conn)[0]
+        assert all(isinstance(v, int) for v in rec.values())
+
+
 class TestEnvelopeAndExport:
     def test_envelope_shape(self):
         env = _envelope([{"a": 1}])
@@ -158,8 +178,12 @@ class TestEnvelopeAndExport:
 
 
 class TestRunExport:
-    def test_writes_all_three_files(self, tmp_path):
+    def test_writes_all_files(self, tmp_path):
         conn = _mock_conn([])
+        # totals() uses .one(); provide a zero-count row.
+        conn.execute.return_value.one.return_value = SimpleNamespace(
+            total_posts=0, total_comments=0, total_users=0
+        )
         engine = MagicMock()
         engine.connect.return_value.__enter__.return_value = conn
 
@@ -167,6 +191,7 @@ class TestRunExport:
 
         names = {p.name for p in tmp_path.glob("*.json")}
         assert names == {
+            "totals.json",
             "posts_per_category.json",
             "posts_per_day.json",
             "top_contributors.json",

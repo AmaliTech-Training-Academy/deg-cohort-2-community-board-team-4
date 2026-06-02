@@ -1,9 +1,10 @@
 """
 Analytics dataset export for CommunityBoard.
 
-Runs three read-only queries against the live application tables and writes
-each result as a JSON flat file for the dashboard frontend to consume:
+Runs read-only queries against the live application tables and writes each
+result as a JSON flat file for the dashboard frontend to consume:
 
+  - totals.json              : total posts, comments, and users
   - posts_per_category.json  : post count per category (NEWS/EVENT/DISCUSSION/ALERT)
   - posts_per_day.json       : post count per day over the last N days (gap-filled)
   - top_contributors.json    : top N users by post count
@@ -119,6 +120,27 @@ def top_contributors(conn: Connection, limit: int = DEFAULT_TOP) -> list[dict]:
     ]
 
 
+def totals(conn: Connection) -> list[dict]:
+    """Overall totals: posts, comments, users. Single-row dataset."""
+    row = conn.execute(
+        text(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM posts)    AS total_posts,
+                (SELECT COUNT(*) FROM comments) AS total_comments,
+                (SELECT COUNT(*) FROM users)    AS total_users
+            """
+        )
+    ).one()
+    return [
+        {
+            "total_posts": int(row.total_posts),
+            "total_comments": int(row.total_comments),
+            "total_users": int(row.total_users),
+        }
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # JSON export
 # --------------------------------------------------------------------------- #
@@ -150,8 +172,9 @@ def export_json(records: list[dict], filename: str, output_dir: Path) -> Path:
 # Orchestration
 # --------------------------------------------------------------------------- #
 def run_export(engine: Engine, days: int, limit: int, output_dir: Path) -> None:
-    """Run all three queries on one connection and export their JSON files."""
+    """Run all queries on one connection and export their JSON files."""
     with engine.connect() as conn:
+        export_json(totals(conn), "totals.json", output_dir)
         export_json(posts_per_category(conn), "posts_per_category.json", output_dir)
         export_json(posts_per_day(conn, days), "posts_per_day.json", output_dir)
         export_json(top_contributors(conn, limit), "top_contributors.json", output_dir)

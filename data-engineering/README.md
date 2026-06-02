@@ -83,6 +83,7 @@ per dataset for the dashboard frontend:
 
 | File | Dataset |
 |------|---------|
+| `totals.json` | Total posts, comments, and users |
 | `posts_per_category.json` | Post count per category (NEWS/EVENT/DISCUSSION/ALERT) |
 | `posts_per_day.json` | Post count per day over the last N days (gap-filled with zeros) |
 | `top_contributors.json` | Top N users by post count |
