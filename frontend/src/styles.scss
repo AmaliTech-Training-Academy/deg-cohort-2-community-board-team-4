@@ -1,0 +1,60 @@
+/* Clean, Standard Global Configuration */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color Palette */
+  --color-white: #ffffff;
+  --color-primary: #0f2233;
+  --color-primary-hover: #17324a;
+  --color-secondary: #5c6f81;
+  --color-accent: #c85a17;
+  --color-error: #dc3545;
+  --color-error-bg: #fffafb;
+  --color-border: #eef1f4;
+  --color-bg-input: #f3f5f7;
+  --color-placeholder: #a0aec0;
+  --color-text-muted: #718096;
+  
+  /* Typography */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-title: 1.75rem;
+  --font-size-title-mobile: 1.6rem;
+  --font-size-subtitle: 0.9rem;
+  --font-size-body: 0.9rem;
+  --font-size-label: 0.85rem;
+  --font-size-label-mobile: 0.8rem;
+  --font-size-error: 0.78rem;
+  --font-size-help: 0.75rem;
+  --font-size-footer: 0.85rem;
+  --font-size-button: 0.95rem;
+
+  /* Transitions & Spacing */
+  --transition-normal: all 0.2s ease-in-out;
+  --transition-hover: all 0.2s ease;
+  --border-radius-card: 20px;
+  --border-radius-input: 8px;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--color-white);
+    font-family: var(--font-family-sans);
+}
+
+/* Central Auth Error Banner */
+.auth-error-banner {
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius-input);
+    font-size: var(--font-size-error);
+    font-weight: 500;
+    margin-bottom: 1.25rem;
+    text-align: center;
+    box-sizing: border-box;
+    width: 100%;
+}

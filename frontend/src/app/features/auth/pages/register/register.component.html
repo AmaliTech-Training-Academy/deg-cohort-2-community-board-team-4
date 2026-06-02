@@ -1,0 +1,100 @@
+<div class="auth-container">
+    <div class="auth-card">
+
+        <div class="logo-wrapper">
+            <img src="assets/images/logo.svg" alt="Ping Logo" class="app-logo">
+        </div>
+
+        <h1 class="auth-title">Join the <br> Community</h1>
+        <p class="auth-subtitle">Create an account to get started</p>
+
+        @if (errorMessage) {
+            <div class="auth-error-banner">{{ errorMessage }}</div>
+        }
+
+        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <div class="input-wrapper" [class.input-error]="shouldShowBlurError('fullName', 'required')">
+                    <img src="assets/icons/mail.svg" alt="User Icon" class="input-icon">
+                    <input type="text" id="fullName" formControlName="fullName" placeholder="e.g., John Doe" [readonly]="isLoading">
+                </div>
+
+                @if (shouldShowBlurError('fullName', 'required')) {
+                <div class="error-message">Full name is required</div>
+                }
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <div class="input-wrapper"
+                    [class.input-error]="shouldShowBlurError('email', 'required') || shouldShowBlurError('email', 'email')">
+                    <img src="assets/icons/mail.svg" alt="Mail Icon" class="input-icon">
+                    <input type="email" id="email" formControlName="email" placeholder="your@example.com"
+                        autocomplete="email" [readonly]="isLoading">
+                </div>
+                @if (shouldShowBlurError('email', 'required')) {
+                <div class="error-message">Email is required</div>
+                } @else if (shouldShowBlurError('email', 'email')) {
+                <div class="error-message">Your email is incorrect</div>
+                }
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-wrapper" [class.input-error]="shouldShowBlurError('password', 'required') || 
+                                       shouldShowBlurError('password', 'minlength') || 
+                                       shouldShowBlurError('password', 'pattern')">
+                    <img src="assets/icons/lock.svg" alt="Lock Icon" class="input-icon">
+                    <input [type]="passwordVisible ? 'text' : 'password'" id="password" formControlName="password"
+                        placeholder="Enter password" [readonly]="isLoading">
+                    <button type="button" class="toggle-password" (click)="togglePasswordVisibility('pass')" [disabled]="isLoading">
+                        <img src="assets/icons/eye-off.svg" alt="Toggle Password View" class="eye-icon">
+                    </button>
+                </div>
+            
+                @if (shouldShowBlurError('password', 'required')) {
+                <div class="error-message">Password is required</div>
+                } @else if (shouldShowBlurError('password', 'minlength')) {
+                <div class="error-message">Password must be at least 6 characters</div>
+                } @else if (shouldShowBlurError('password', 'pattern')) {
+                <div class="error-message">Password must contain a special character</div>
+                } @else if (shouldShowPasswordHint()) {
+                <p class="field-help-text">Minimum of 6 characters including special characters</p>
+                }
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <div class="input-wrapper"
+                    [class.input-error]="shouldShowBlurError('confirmPassword', 'required') || 
+                                 (registerForm.hasError('passwordMismatch') && (f['confirmPassword'].touched || submitted))">
+                    <img src="assets/icons/lock.svg" alt="Lock Icon" class="input-icon">
+                    <input [type]="confirmPasswordVisible ? 'text' : 'password'" id="confirmPassword"
+                        formControlName="confirmPassword" placeholder="Enter password" [readonly]="isLoading">
+                    <button type="button" class="toggle-password" (click)="togglePasswordVisibility('confirm')" [disabled]="isLoading">
+                        <img src="assets/icons/eye-off.svg" alt="Toggle Password View" class="eye-icon">
+                    </button>
+                </div>
+
+                @if (shouldShowBlurError('confirmPassword', 'required')) {
+                <div class="error-message">Please confirm your password</div>
+                } @else if (registerForm.hasError('passwordMismatch') && (f['confirmPassword'].touched || submitted)) {
+                <div class="error-message">Passwords do not match</div>
+                }
+            </div>
+
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+                {{ isLoading ? 'Registering...' : 'Register' }}
+            </button>
+
+            <div class="auth-footer">
+                <span>Already have an account? </span>
+                <a routerLink="/auth/login" class="swap-auth-link">Log in</a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
