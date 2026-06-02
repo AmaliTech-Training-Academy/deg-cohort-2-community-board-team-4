@@ -2,6 +2,7 @@ package com.amalitech.communityboard.service;
 
 import com.amalitech.communityboard.dto.*;
 import com.amalitech.communityboard.model.*;
+import com.amalitech.communityboard.exception.ResourceNotFoundException;
 import com.amalitech.communityboard.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,14 +15,26 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
     public List<CommentResponse> getCommentsByPost(Long postId) {
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId).stream()
                 .map(this::toResponse).toList();
     }
 
-    // TODO: Implement createComment
-    // public CommentResponse createComment(Long postId, CommentRequest request, User author) { ... }
+    public CommentResponse createComment(Long postId, CommentRequest request, Long userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found with id " + postId));
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
+        Comment comment = Comment.builder()
+                .content(request.getContent())
+                .post(post)
+                .author(author)
+                .createdAt(LocalDateTime.now())
+                .build();
+        return toResponse(commentRepository.save(comment));
+    }
 
     // TODO: Implement deleteComment
     // public void deleteComment(Long commentId, User author) { ... }
