@@ -17,6 +17,36 @@ docker-compose up --build
 - Backend API: http://localhost:8080/swagger-ui.html
 - Frontend: http://localhost:3000
 
+## Testing
+
+### Backend (JUnit 5)
+Unit tests live under `backend/src/test/java`. They are pure unit tests — they mock all
+collaborators (no Spring context, no database), so they run in milliseconds and are safe to
+run in CI pipelines. The dependencies (JUnit 5, Mockito, AssertJ) come bundled with
+`spring-boot-starter-test`, so no extra setup is required.
+
+```bash
+cd backend
+
+# Run all tests
+mvn test
+
+# Run a single test class
+mvn test -Dtest=PostServiceTest
+
+# Run a single test method
+mvn test -Dtest=PostServiceTest#returnsResponseWhenFound
+```
+
+Test reports are written to `backend/target/surefire-reports/`.
+
+In CI, run the same command from the `backend/` directory:
+```yaml
+- name: Run backend unit tests
+  run: mvn -B test
+  working-directory: backend
+```
+
 ## Default Users (seeded)
 | Email | Password | Role |
 |---|---|---|
