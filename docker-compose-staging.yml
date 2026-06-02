@@ -64,7 +64,7 @@ services:
   data-engineering:
     image: ${REGISTRY}/communityboard-data-engineering:test-latest
     environment:
-      # Dummy test environment — points at the test Postgres above.
+      
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: ${POSTGRES_DB:-communityboard_test}
