@@ -9,6 +9,7 @@ import com.amalitech.communityboard.model.enums.Role;
 import com.amalitech.communityboard.repository.CategoryRepository;
 import com.amalitech.communityboard.repository.CommentRepository;
 import com.amalitech.communityboard.repository.PostRepository;
+import com.amalitech.communityboard.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +42,8 @@ class PostServiceTest {
     private CategoryRepository categoryRepository;
     @Mock
     private CommentRepository commentRepository;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private PostService postService;
@@ -78,7 +81,8 @@ class PostServiceTest {
         void mapsPostsToResponses() {
             Page<Post> page = new PageImpl<>(List.of(post));
             when(postRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(page);
-            when(commentRepository.countByPostId(100L)).thenReturn(4);
+            when(commentRepository.countByPostIdIn(List.of(100L)))
+                    .thenReturn(List.<Object[]>of(new Object[]{100L, 4L}));
 
             Page<PostResponse> result = postService.getAllPosts(0, 20);
 
@@ -115,7 +119,7 @@ class PostServiceTest {
 
             assertThatThrownBy(() -> postService.getPostById(999L))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Post not found");
+                    .hasMessage("Post not found with id 999");
         }
     }
 
@@ -127,10 +131,11 @@ class PostServiceTest {
         @DisplayName("persists the post and attaches the category when categoryId is provided")
         void createsWithCategory() {
             PostRequest request = new PostRequest("New title", "New content", 10L);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(author));
             when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            PostResponse result = postService.createPost(request, author);
+            PostResponse result = postService.createPost(request, 1L);
 
             ArgumentCaptor<Post> saved = ArgumentCaptor.forClass(Post.class);
             verify(postRepository).save(saved.capture());
@@ -144,9 +149,10 @@ class PostServiceTest {
         @DisplayName("does not look up a category when categoryId is null")
         void createsWithoutCategory() {
             PostRequest request = new PostRequest("New title", "New content", null);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(author));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            PostResponse result = postService.createPost(request, author);
+            PostResponse result = postService.createPost(request, 1L);
 
             verify(categoryRepository, never()).findById(any());
             assertThat(result.getCategoryName()).isNull();
@@ -165,7 +171,7 @@ class PostServiceTest {
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            PostResponse result = postService.updatePost(100L, request, author);
+            PostResponse result = postService.updatePost(100L, request, 1L);
 
             assertThat(result.getTitle()).isEqualTo("Updated");
             assertThat(result.getContent()).isEqualTo("Updated body");
@@ -178,7 +184,7 @@ class PostServiceTest {
             PostRequest request = new PostRequest("Updated", "Updated body", null);
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
 
-            assertThatThrownBy(() -> postService.updatePost(100L, request, otherUser))
+            assertThatThrownBy(() -> postService.updatePost(100L, request, 2L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Not authorized to update this post");
             verify(postRepository, never()).save(any());
@@ -190,9 +196,9 @@ class PostServiceTest {
             PostRequest request = new PostRequest("Updated", "Updated body", null);
             when(postRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> postService.updatePost(999L, request, author))
+            assertThatThrownBy(() -> postService.updatePost(999L, request, 1L))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Post not found");
+                    .hasMessage("Post not found with id 999");
         }
     }
 
@@ -204,8 +210,9 @@ class PostServiceTest {
         @DisplayName("deletes when the requester is the author")
         void deletesWhenAuthor() {
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
+            when(userRepository.findById(1L)).thenReturn(Optional.of(author));
 
-            postService.deletePost(100L, author);
+            postService.deletePost(100L, 1L);
 
             verify(postRepository).delete(post);
         }
@@ -214,8 +221,9 @@ class PostServiceTest {
         @DisplayName("allows an admin who is not the author to delete")
         void deletesWhenAdmin() {
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
+            when(userRepository.findById(3L)).thenReturn(Optional.of(admin));
 
-            postService.deletePost(100L, admin);
+            postService.deletePost(100L, 3L);
 
             verify(postRepository).delete(post);
         }
@@ -224,8 +232,9 @@ class PostServiceTest {
         @DisplayName("throws and does not delete when a non-author, non-admin requests deletion")
         void rejectsNonAuthorNonAdmin() {
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
+            when(userRepository.findById(2L)).thenReturn(Optional.of(otherUser));
 
-            assertThatThrownBy(() -> postService.deletePost(100L, otherUser))
+            assertThatThrownBy(() -> postService.deletePost(100L, 2L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Not authorized to delete this post");
             verify(postRepository, never()).delete(any());
