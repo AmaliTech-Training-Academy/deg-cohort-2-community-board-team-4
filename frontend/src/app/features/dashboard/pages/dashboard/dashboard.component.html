@@ -1,1 +1,16 @@
-<p>dashboard works!</p>
+<div style="padding: 2.5rem; font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; text-align: center;">
+  <div style="margin-bottom: 2rem;">
+    <img src="assets/images/logo.svg" alt="Ping Logo" style="height: 48px; margin-bottom: 1.5rem;">
+    <h1 style="color: #0f2233; font-size: 2.25rem; font-weight: 700; margin: 0 0 0.5rem 0;">Welcome to Ping!</h1>
+    <p style="color: #5c6f81; font-size: 1rem; margin: 0;">Your neighborhood bulletin board is ready.</p>
+  </div>
+
+  <div style="background-color: #f3f5f7; padding: 2rem; border-radius: 12px; border: 1px solid #eef1f4; margin-bottom: 2rem; text-align: left;">
+    <h2 style="color: #0f2233; font-size: 1.25rem; margin-top: 0; margin-bottom: 0.75rem;">Standup Demo Sandbox</h2>
+    <p style="color: #5c6f81; font-size: 0.9rem; margin-bottom: 0;">You are currently logged in as a mock authenticated user. Clicking the button below will invoke <code>authService.logout()</code>, clear localStorage tokens, and redirect you back to the public login screen.</p>
+  </div>
+
+  <button (click)="onLogout()" style="padding: 0.85rem 2rem; background-color: #0f2233; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: background-color 0.2s ease;">
+    Log Out
+  </button>
+</div>
