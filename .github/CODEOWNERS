@@ -1,0 +1,21 @@
+# CODEOWNERS — folder ownership for the CommunityBoard monorepo.
+#
+# A PR that touches a path needs an approving review from that path's owner(s)
+# once branch protection has "Require review from Code Owners" enabled.
+# Owners must have WRITE access to the repo, or GitHub ignores them.
+# Rules are evaluated top-to-bottom; the LAST matching pattern wins.
+
+# Default owner for anything not matched by a rule below (incl. design and root
+# files). @ishimwejeanluc is the repo admin.
+*                     @ishimwejeanluc
+
+# Per-area ownership
+/backend/             @leandreAlly
+/frontend/            @axoo01
+/data-engineering/    @mbarndouka
+/qa/                  @kageruka02
+/devops/              @ishimwejeanluc
+
+# Shared infrastructure / CI — owned by devops/admin.
+/.github/             @ishimwejeanluc
+/docker-compose*.yml  @ishimwejeanluc

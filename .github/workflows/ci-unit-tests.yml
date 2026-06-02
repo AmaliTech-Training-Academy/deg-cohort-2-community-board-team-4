@@ -1,0 +1,91 @@
+name: CI · Unit Tests
+
+# ============================================================================
+# Reusable unit-test workflow, called by ci.yml. One job per area, all gated on
+# their input so only changed areas run; the jobs themselves run in PARALLEL.
+# These are real GATES — a failure here fails the pipeline (fail-fast).
+#
+# Caching: maven (~/.m2), npm (lockfile-keyed), uv — all cached.
+# ============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      backend:
+        type: boolean
+        default: false
+      frontend:
+        type: boolean
+        default: false
+      data_engineering:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Distinct group from the orchestrator (ci-<ref>) to avoid a caller/callee
+# deadlock. A newer push to the same branch cancels these in-progress tests.
+concurrency:
+  group: ci-unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Maven)
+    if: ${{ inputs.backend }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Exact command requested by the team. NOTE: requires the test
+      # PostServiceTest to exist; until it lands `-Dtest=PostServiceTest` fails
+      # with "No tests matching". Broaden to `mvn -B test` to run the whole suite.
+      - name: Unit tests
+        run: mvn -B test -Dtest=PostServiceTest
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: backend/target/surefire-reports/**
+          if-no-files-found: ignore
+
+  data-engineering:
+    name: Data engineering (pytest)
+    if: ${{ inputs.data_engineering }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: data-engineering
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv (with cache)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: data-engineering/uv.lock
+
+      - name: Install Python + locked deps (incl. dev)
+        run: |
+          uv python install 3.11
+          uv sync --extra dev --frozen
+
+      - name: Unit tests
+        run: uv run pytest -q

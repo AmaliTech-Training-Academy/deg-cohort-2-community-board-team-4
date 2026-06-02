@@ -1,0 +1,247 @@
+name: CI · Security (advisory)
+
+# ============================================================================
+# Reusable security sweep, called by ci.yml. ADVISORY by team decision: every
+# scan reports to the run's Step Summary but uses continue-on-error / exit-code
+# 0 so it NEVER blocks the pipeline.
+#
+# To turn any of these into a hard gate later:
+#   * gitleaks  -> remove `continue-on-error: true` on the scan step
+#   * trivy-fs  -> change `exit-code: '0'` to `'1'`
+#   * snyk      -> remove `continue-on-error: true` on the snyk step
+#
+# Jobs run in parallel. Each language scan is scoped to the changed area only.
+# SAST is the `sonar` job (SonarQube scan + quality gate, via the official
+# SonarQube actions). It self-skips when SONAR_TOKEN is not configured.
+# See devops/sonar/README.md.
+# ============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      backend:
+        type: boolean
+        default: false
+      frontend:
+        type: boolean
+        default: false
+      data_engineering:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Distinct group from the orchestrator (ci-<ref>) to avoid a caller/callee
+# concurrency deadlock. A newer push to the same branch supersedes this run.
+concurrency:
+  group: ci-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Secret scan over the whole push. gitleaks-action auto-detects the push
+  # commit range. Advisory for now (continue-on-error).
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan
+        continue-on-error: true   # ADVISORY — flip to a gate by removing this
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Required by gitleaks-action v2 for organization-owned repos.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # SCA + IaC/Dockerfile misconfig, scoped to the changed area(s). Advisory:
+  # exit-code 0 means findings are reported but never fail the job.
+  trivy-fs:
+    name: Trivy (deps & misconfig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan backend
+        if: ${{ inputs.backend }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'          # ADVISORY — set to '1' to make it a gate
+          format: table
+          output: trivy-backend.txt
+
+      - name: Scan frontend
+        if: ${{ inputs.frontend }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+          format: table
+          output: trivy-frontend.txt
+
+      - name: Scan data-engineering
+        if: ${{ inputs.data_engineering }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: data-engineering
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+          format: table
+          output: trivy-data-engineering.txt
+
+      - name: Report to summary
+        if: always()
+        run: |
+          {
+            echo "## 🔍 Trivy filesystem scan — advisory"
+            echo ""
+            found=false
+            for area in backend frontend data-engineering; do
+              f="trivy-${area}.txt"
+              if [ -s "$f" ]; then
+                found=true
+                echo "### ${area}"
+                echo '```'
+                cat "$f"
+                echo '```'
+                echo ""
+              fi
+            done
+            if [ "$found" = false ]; then
+              echo "✅ No CRITICAL/HIGH findings in the scanned area(s)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Snyk SCA. Only runs if SNYK_TOKEN is configured; advisory otherwise the
+  # team would be blocked before adopting a baseline. One step per changed area.
+  snyk:
+    name: Snyk (SCA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Token check
+        id: gate
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SNYK_TOKEN not set — skipping Snyk SCA. Add the repo secret to enable."
+          fi
+
+      - name: Set up Java (backend)
+        if: ${{ inputs.backend && steps.gate.outputs.enabled == 'true' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Snyk - backend (Maven)
+        if: ${{ inputs.backend && steps.gate.outputs.enabled == 'true' }}
+        continue-on-error: true   # ADVISORY
+        uses: snyk/actions/maven@master
+        with:
+          args: --severity-threshold=high --file=backend/pom.xml
+
+      - name: Snyk - frontend (Node)
+        if: ${{ inputs.frontend && steps.gate.outputs.enabled == 'true' }}
+        continue-on-error: true   # ADVISORY
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high --file=frontend/package.json
+
+      - name: Snyk - data-engineering (Python)
+        if: ${{ inputs.data_engineering && steps.gate.outputs.enabled == 'true' }}
+        continue-on-error: true   # ADVISORY
+        uses: snyk/actions/python-3.11@master
+        with:
+          args: --severity-threshold=high --file=data-engineering/pyproject.toml --package-manager=pip
+
+  # SAST via the official SonarQube actions. Multi-language analysis driven by
+  # devops/sonar/sonar-project.properties. Self-skips when SONAR_TOKEN is unset.
+  # Advisory for now (continue-on-error) while the team adopts a baseline —
+  # remove continue-on-error on the quality-gate step to make it block.
+  #
+  # Has its own job-level concurrency on top of the workflow group: SonarQube
+  # server-side analysis should not have two overlapping runs of the same
+  # project key racing each other.
+  sonar:
+    name: SonarQube (SAST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ inputs.backend || inputs.frontend || inputs.data_engineering }}
+    concurrency:
+      group: sonar-${{ github.repository }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    steps:
+      - name: Checkout (full history for blame)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Token check
+        id: gate
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SONAR_TOKEN not set — skipping SonarQube. Add SONAR_TOKEN (+ SONAR_HOST_URL for self-hosted) to enable."
+          fi
+
+      # Compile the backend so Sonar analyses real Java bytecode (the properties
+      # file points sonar.java.binaries at backend/target/classes).
+      - name: Set up Java
+        if: ${{ inputs.backend && steps.gate.outputs.enabled == 'true' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile backend (for Java analysis)
+        if: ${{ inputs.backend && steps.gate.outputs.enabled == 'true' }}
+        working-directory: backend
+        run: mvn -B -DskipTests compile
+
+      - name: SonarQube scan
+        if: ${{ steps.gate.outputs.enabled == 'true' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: -Dproject.settings=devops/sonar/sonar-project.properties
+
+      - name: SonarQube quality gate
+        if: ${{ steps.gate.outputs.enabled == 'true' }}
+        continue-on-error: true   # ADVISORY — remove to make the gate block
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
