@@ -23,6 +23,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
+    private final UserRepository userRepository;
 
     public Page<PostResponse> getAllPosts(int page, int size) {
         int safePage = Math.max(page, 0);
@@ -51,7 +52,8 @@ public class PostService {
         return toResponse(post);
     }
 
-    public PostResponse createPost(PostRequest request, User author) {
+    public PostResponse createPost(PostRequest request, Long userId) {
+        User author = getUser(userId);
         Post post = Post.builder()
                 .title(request.getTitle())
                 .slug(generateUniqueSlug(request.getTitle()))
@@ -67,10 +69,10 @@ public class PostService {
         return toResponse(postRepository.save(post));
     }
 
-    public PostResponse updatePost(Long id, PostRequest request, User author) {
+    public PostResponse updatePost(Long id, PostRequest request, Long userId) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id " + id));
-        if (!post.getAuthor().getId().equals(author.getId())) {
+        if (!post.getAuthor().getId().equals(userId)) {
             throw new ForbiddenException("Not authorized to update this post");
         }
         post.setTitle(request.getTitle());
@@ -83,14 +85,20 @@ public class PostService {
         return toResponse(postRepository.save(post));
     }
 
-    public void deletePost(Long id, User author) {
+    public void deletePost(Long id, Long userId) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id " + id));
-        if (!post.getAuthor().getId().equals(author.getId())
-                && !author.getRole().name().equals("ADMIN")) {
+        User requester = getUser(userId);
+        if (!post.getAuthor().getId().equals(userId)
+                && !requester.getRole().name().equals("ADMIN")) {
             throw new ForbiddenException("Not authorized to delete this post");
         }
         postRepository.delete(post);
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
     }
 
     // TODO: Implement search functionality

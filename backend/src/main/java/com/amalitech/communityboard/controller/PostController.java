@@ -1,7 +1,6 @@
 package com.amalitech.communityboard.controller;
 
 import com.amalitech.communityboard.dto.*;
-import com.amalitech.communityboard.model.User;
 import com.amalitech.communityboard.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,23 +31,23 @@ public class PostController {
     @PostMapping
     public ResponseEntity<PostResponse> createPost(
             @Valid @RequestBody PostRequest request,
-            @AuthenticationPrincipal User author) {
-        return ResponseEntity.ok(postService.createPost(request, author));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(postService.createPost(request, userId));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
             @Valid @RequestBody PostRequest request,
-            @AuthenticationPrincipal User author) {
-        return ResponseEntity.ok(postService.updatePost(id, request, author));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(postService.updatePost(id, request, userId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(
             @PathVariable Long id,
-            @AuthenticationPrincipal User author) {
-        postService.deletePost(id, author);
+            @AuthenticationPrincipal Long userId) {
+        postService.deletePost(id, userId);
         return ResponseEntity.noContent().build();
     }
 
