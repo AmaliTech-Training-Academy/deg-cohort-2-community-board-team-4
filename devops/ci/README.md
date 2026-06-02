@@ -72,20 +72,25 @@ Image names: `communityboard-backend`, `communityboard-frontend`,
 | Secret | Required? | Used by |
 |--------|-----------|---------|
 | `GITLEAKS_LICENSE` | yes (org-owned repo) | gitleaks-action v2 |
+| `DOCKERHUB_TOKEN` | yes (for image push) | Docker Hub login (Account → Security → access token) |
 | `SNYK_TOKEN` | optional | Snyk SCA (skipped if unset) |
-| `REGISTRY_PASSWORD` | optional | registry login (defaults to `GITHUB_TOKEN` for GHCR) |
 | `SONAR_TOKEN`, `SONAR_HOST_URL` | only when enabling Sonar | SonarQube |
 
-### Variables (optional — sensible defaults)
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `REGISTRY` | `ghcr.io` | container registry host |
-| `IMAGE_NAMESPACE` | repo owner (lowercased) | registry namespace |
-| `REGISTRY_USERNAME` | `github.actor` | registry login user |
-| `TRIVY_IMAGE_EXIT_CODE` | `0` | set `1` to make image CVEs block the push |
+### Variables
+| Variable | Required? | Default | Purpose |
+|----------|-----------|---------|---------|
+| `DOCKERHUB_USERNAME` | yes (for image push) | — | Docker Hub account/org: image namespace **and** login username |
+| `REGISTRY` | no | `docker.io` | registry host |
+| `IMAGE_NAMESPACE` | no | `DOCKERHUB_USERNAME` | override the namespace |
+| `TRIVY_IMAGE_EXIT_CODE` | no | `0` | set `1` to make image CVEs block the push |
 
-With no extra config the pipeline pushes to **GHCR** using the built-in token
-(`packages: write`).
+Images are pushed to **Docker Hub** as
+`docker.io/<DOCKERHUB_USERNAME>/communityboard-<service>:<tag>`. The image build
+runs but **skips the push** on any branch other than `dev`/`test`/`main`.
+
+> For the `docker-compose-staging.yml` / `docker-compose-prod.yml` files, set their
+> `REGISTRY` env to `<DOCKERHUB_USERNAME>` (or `docker.io/<DOCKERHUB_USERNAME>`) so
+> `${REGISTRY}/communityboard-<service>` resolves to the same images this pipeline pushes.
 
 ## ⚠️ Known prerequisites before the pipeline goes green
 

@@ -37,8 +37,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
-  packages: write       # push images to GHCR with the built-in GITHUB_TOKEN
+  contents: read        # image push authenticates to Docker Hub via DOCKERHUB_TOKEN
 
 # One run per branch; a newer push cancels the older in-progress run.
 concurrency:
