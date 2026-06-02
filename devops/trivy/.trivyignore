@@ -1,0 +1,6 @@
+# Trivy ignore list — accepted/triaged vulnerabilities.
+# Add one CVE ID per line, with a comment explaining WHY it is accepted and a
+# review date. Empty by default.
+#
+# Example:
+# CVE-2024-12345   # transitive dep, no fix available, not reachable — review 2026-09-01
