@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,8 +24,21 @@ public class PostService {
 
     public Page<PostResponse> getAllPosts(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return postRepository.findAllByOrderByCreatedAtDesc(pageable)
-                .map(this::toResponse);
+        Page<Post> posts = postRepository.findAllByOrderByCreatedAtDesc(pageable);
+        Map<Long, Integer> commentCounts = commentCountsFor(posts.getContent());
+        return posts.map(post -> toResponse(post, commentCounts.getOrDefault(post.getId(), 0)));
+    }
+
+    private Map<Long, Integer> commentCountsFor(List<Post> posts) {
+        if (posts.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, Integer> counts = new HashMap<>();
+        for (Object[] row : commentRepository.countByPostIdIn(postIds)) {
+            counts.put((Long) row[0], ((Long) row[1]).intValue());
+        }
+        return counts;
     }
 
     public PostResponse getPostById(Long id) {
@@ -88,6 +104,10 @@ public class PostService {
     }
 
     private PostResponse toResponse(Post post) {
+        return toResponse(post, commentRepository.countByPostId(post.getId()));
+    }
+
+    private PostResponse toResponse(Post post, int commentCount) {
         return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -99,7 +119,7 @@ public class PostService {
                 .authorEmail(post.getAuthor().getEmail())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
-                .commentCount(commentRepository.countByPostId(post.getId()))
+                .commentCount(commentCount)
                 .build();
     }
 }
