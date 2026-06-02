@@ -7,15 +7,12 @@ import { User, AuthResponse } from '../models/user.interface';
   providedIn: 'root'
 })
 export class AuthService {
-  // Key names for local storage
   private readonly USERS_KEY = 'ping_users';
   private readonly TOKEN_KEY = 'ping_token';
   private readonly REFRESH_TOKEN_KEY = 'ping_refresh_token';
 
-  // Signals for local reactive state
   private currentUserSignal = signal<User | null>(null);
   
-  // Publicly exposed read-only signals
   currentUser = this.currentUserSignal.asReadonly();
   isAuthenticated = computed(() => this.currentUserSignal() !== null);
 
@@ -24,9 +21,6 @@ export class AuthService {
     this.restoreSession();
   }
 
-  /**
-   * Seeds default admin & user accounts matching PostgreSQL seeds if storage is empty.
-   */
   private initializeMockUsers(): void {
     const storedUsers = localStorage.getItem(this.USERS_KEY);
     if (!storedUsers) {
@@ -35,7 +29,7 @@ export class AuthService {
           id: 1,
           email: 'admin@amalitech.com',
           name: 'Admin User',
-          password: 'password123', // Raw password for local verification
+          password: 'password123',
           role: 'ADMIN' as const,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -54,14 +48,10 @@ export class AuthService {
     }
   }
 
-  /**
-   * Checks if user has a valid active token and restores state.
-   */
   private restoreSession(): void {
     const token = localStorage.getItem(this.TOKEN_KEY);
     if (token) {
       try {
-        // Mock token decodes or reads active user from saved list
         const email = this.getEmailFromToken(token);
         const users = this.getStoredUsers();
         const matchedUser = users.find(u => u.email === email);
@@ -77,15 +67,11 @@ export class AuthService {
     }
   }
 
-  /**
-   * Authenticates user against local storage mock accounts.
-   */
   login(email: string, passwordInput: string): Observable<AuthResponse> {
     const users = this.getStoredUsers();
     const matchedUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!matchedUser || matchedUser.password !== passwordInput) {
-      // Simulate API lag before throwing auth error
       return timer(800).pipe(
         switchMap(() => throwError(() => new Error('Invalid email or password')))
       );
@@ -93,7 +79,6 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = matchedUser;
     
-    // Generate mock tokens
     const token = this.generateMockToken(matchedUser.email);
     const refreshToken = this.generateMockToken(matchedUser.email, true);
 
@@ -104,7 +89,7 @@ export class AuthService {
     };
 
     return of(response).pipe(
-      delay(800), // Simulate network delay
+      delay(800),
       switchMap(() => {
         localStorage.setItem(this.TOKEN_KEY, token);
         localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
@@ -114,15 +99,11 @@ export class AuthService {
     );
   }
 
-  /**
-   * Registers a new user locally and logs them in.
-   */
   register(name: string, email: string, passwordInput: string): Observable<AuthResponse> {
     const users = this.getStoredUsers();
     const isDuplicate = users.some(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (isDuplicate) {
-      // Simulate API lag before throwing duplicate conflict error
       return timer(800).pipe(
         switchMap(() => throwError(() => new Error('Email is already registered')))
       );
@@ -162,30 +143,19 @@ export class AuthService {
     );
   }
 
-  /**
-   * De-authenticates user and removes session storage.
-   */
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     this.currentUserSignal.set(null);
   }
 
-  /**
-   * Accessor for JWT Access Token.
-   */
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Accessor for JWT Refresh Token.
-   */
   getRefreshToken(): string | null {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
-
-  // --- Mock Token Helpers ---
 
   private getStoredUsers(): any[] {
     const data = localStorage.getItem(this.USERS_KEY);
