@@ -8,13 +8,17 @@
     <h1 class="auth-title">Welcome back</h1>
     <p class="auth-subtitle">Sign in to your neighborhood community</p>
 
+    @if (errorMessage) {
+      <div class="auth-error-banner">{{ errorMessage }}</div>
+    }
+
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
 
       <div class="form-group">
         <label for="email">Email</label>
         <div class="input-wrapper" [class.input-error]="shouldShowBlurError('email', 'required') || shouldShowBlurError('email', 'email')">
           <img src="assets/icons/mail.svg" alt="Mail Icon" class="input-icon">
-          <input type="email" id="email" formControlName="email" placeholder="your@example.com">
+          <input type="email" id="email" formControlName="email" placeholder="your@example.com" [readonly]="isLoading">
         </div>
         @if (shouldShowBlurError('email', 'required')) {
           <div class="error-message">Email is required</div>
@@ -27,8 +31,8 @@
         <label for="password">Password</label>
         <div class="input-wrapper" [class.input-error]="shouldShowBlurError('password', 'required') || shouldShowBlurError('password', 'minlength')">
           <img src="assets/icons/lock.svg" alt="Lock Icon" class="input-icon">
-          <input [type]="passwordVisible ? 'text' : 'password'" id="password" formControlName="password" placeholder="Enter password">
-          <button type="button" class="toggle-password" (click)="togglePasswordVisibility()">
+          <input [type]="passwordVisible ? 'text' : 'password'" id="password" formControlName="password" placeholder="Enter password" [readonly]="isLoading">
+          <button type="button" class="toggle-password" (click)="togglePasswordVisibility()" [disabled]="isLoading">
             <img src="assets/icons/eye-off.svg" alt="Toggle View" class="eye-icon">
           </button>
         </div>
@@ -39,7 +43,9 @@
         }
       </div>
 
-      <button type="submit" class="btn-submit">Log In</button>
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        {{ isLoading ? 'Logging in...' : 'Log In' }}
+      </button>
 
       <div class="auth-footer">
         <span>Don't have an account? </span>

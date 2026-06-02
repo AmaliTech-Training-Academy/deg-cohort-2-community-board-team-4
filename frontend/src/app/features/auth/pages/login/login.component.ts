@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -14,8 +15,14 @@ export class LoginComponent {
   loginForm: FormGroup;
   passwordVisible = false;
   submitted = false;
+  isLoading = false;
+  errorMessage = '';
 
-  constructor(private fb: FormBuilder, private router: Router) {
+  constructor(
+    private fb: FormBuilder, 
+    private router: Router,
+    private authService: AuthService
+  ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
@@ -28,7 +35,6 @@ export class LoginComponent {
     this.passwordVisible = !this.passwordVisible;
   }
 
-  
   shouldShowBlurError(controlName: string, errorName: string): boolean {
     const control = this.loginForm.get(controlName);
     if (!control) return false;
@@ -37,11 +43,24 @@ export class LoginComponent {
 
   onSubmit(): void {
     this.submitted = true;
+    this.errorMessage = '';
 
     if (this.loginForm.invalid) {
       return;
     }
 
-    console.log('Login Credentials:', this.loginForm.value);
+    this.isLoading = true;
+    const { email, password } = this.loginForm.value;
+
+    this.authService.login(email, password).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage = err.message || 'Invalid email or password';
+      }
+    });
   }
 }
