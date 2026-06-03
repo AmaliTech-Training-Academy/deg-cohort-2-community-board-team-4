@@ -139,6 +139,12 @@ jobs:
           tags: ${{ steps.meta.outputs.local }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          # No attestations: they turn the image into a manifest index whose
+          # attestation blob isn't uploaded by `docker push`, so Docker Hub
+          # rejects the manifest ("manifest blob unknown"). We push via
+          # docker tag/push after scanning, so keep the image single-manifest.
+          provenance: false
+          sbom: false
 
       # Container vulnerability scan. Advisory by default (exit-code 0).
       - name: Trivy image scan
