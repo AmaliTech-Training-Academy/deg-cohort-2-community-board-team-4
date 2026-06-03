@@ -22,7 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,6 +96,50 @@ class PostServiceTest {
             assertThat(response.getCategoryName()).isEqualTo("General");
             assertThat(response.getAuthorName()).isEqualTo("Alice");
             assertThat(response.getCommentCount()).isEqualTo(4);
+        }
+    }
+
+    @Nested
+    @DisplayName("searchPosts")
+    class SearchPosts {
+
+        @Test
+        @DisplayName("queries via a specification, sorts by createdAt desc, and maps the results")
+        void appliesFiltersAndMaps() {
+            Page<Post> page = new PageImpl<>(List.of(post));
+            when(postRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+            when(commentRepository.countByPostIdIn(List.of(100L)))
+                    .thenReturn(List.<Object[]>of(new Object[]{100L, 2L}));
+
+            LocalDate from = LocalDate.of(2024, 1, 1);
+            LocalDate to = LocalDate.of(2024, 1, 31);
+            Page<PostResponse> result = postService.searchPosts("news", "road", from, to, 0, 10);
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            verify(postRepository).findAll(any(Specification.class), pageableCaptor.capture());
+
+            Pageable pageable = pageableCaptor.getValue();
+            assertThat(pageable.getPageSize()).isEqualTo(10);
+            assertThat(pageable.getPageNumber()).isEqualTo(0);
+            assertThat(pageable.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getCommentCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("works with no filters (blank/null) and clamps page size to the max")
+        void worksWithNoFilters() {
+            Page<Post> page = new PageImpl<>(List.of(post));
+            when(postRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+            when(commentRepository.countByPostIdIn(List.of(100L)))
+                    .thenReturn(List.<Object[]>of(new Object[]{100L, 0L}));
+
+            Page<PostResponse> result = postService.searchPosts("  ", "", null, null, 0, 9999);
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            verify(postRepository).findAll(any(Specification.class), pageableCaptor.capture());
+            assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(100); // clamped to MAX_PAGE_SIZE
+            assertThat(result.getTotalElements()).isEqualTo(1);
         }
     }
 
@@ -237,7 +284,7 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.deletePost(100L, 2L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Not authorized to delete this post");
-            verify(postRepository, never()).delete(any());
+            verify(postRepository, never()).delete(any(Post.class));
         }
     }
 }

@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { PostDetailComponent } from './post-detail.component';
 
 describe('PostDetailComponent', () => {
@@ -9,7 +11,11 @@ describe('PostDetailComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [PostDetailComponent],
-      providers: [provideRouter([])]
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([])
+      ]
     })
     .compileComponents();
 
