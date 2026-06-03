@@ -139,6 +139,11 @@ jobs:
           tags: ${{ steps.meta.outputs.local }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          # Frontend only: bake the per-environment backend URL (from a GitHub
+          # secret, chosen by branch) into the Angular bundle at build time.
+          # Empty for the other services (their Dockerfiles ignore it).
+          build-args: |
+            ${{ matrix.service == 'frontend' && format('API_URL={0}', (github.ref_name == 'test' && secrets.TEST_API_URL) || (github.ref_name == 'main' && secrets.PROD_API_URL) || secrets.DEV_API_URL) || '' }}
           # No attestations: they turn the image into a manifest index whose
           # attestation blob isn't uploaded by `docker push`, so Docker Hub
           # rejects the manifest ("manifest blob unknown"). We push via
