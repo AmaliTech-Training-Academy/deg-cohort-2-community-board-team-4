@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PostService } from '../../../../core/services/post.service';
 import { Post, Category } from '../../../../core/models/post.interface';
@@ -8,7 +9,7 @@ import { Post, Category } from '../../../../core/models/post.interface';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -16,6 +17,7 @@ export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private postService = inject(PostService);
   private router = inject(Router);
+  private fb = inject(FormBuilder);
 
   currentUser = this.authService.currentUser;
 
@@ -23,6 +25,26 @@ export class DashboardComponent implements OnInit {
   posts = signal<Post[]>([]);
   totalPosts = signal<number>(0);
   isLoading = signal<boolean>(true);
+
+  // Post creation modal signals and form
+  isCreateModalOpen = signal<boolean>(false);
+  isSubmittingPost = signal<boolean>(false);
+  postError = signal<string>('');
+
+  postForm: FormGroup = this.fb.group({
+    title: ['', [Validators.required, Validators.maxLength(255)]],
+    categoryId: ['', Validators.required],
+    content: ['', Validators.required]
+  });
+
+  isDropdownOpen = signal<boolean>(false);
+
+  selectedCategoryName = computed(() => {
+    const id = this.postForm.get('categoryId')?.value;
+    if (!id) return 'Select';
+    const cat = this.categories().find(c => c.id === Number(id));
+    return cat ? (cat.name === 'Event' ? 'Events' : cat.name) : 'Select';
+  });
 
   searchQuery = signal<string>('');
   selectedCategoryId = signal<number | undefined>(undefined);
@@ -104,6 +126,58 @@ export class DashboardComponent implements OnInit {
   onLogout(): void {
     this.authService.logout();
     this.router.navigate(['/auth/login']);
+  }
+
+  openCreateModal(): void {
+    this.isCreateModalOpen.set(true);
+    this.postError.set('');
+    this.isDropdownOpen.set(false);
+    this.postForm.reset({ title: '', categoryId: '', content: '' });
+  }
+
+  closeCreateModal(): void {
+    if (this.isSubmittingPost()) return;
+    this.isCreateModalOpen.set(false);
+    this.postError.set('');
+    this.isDropdownOpen.set(false);
+    this.postForm.reset();
+  }
+
+  toggleDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isDropdownOpen.update(v => !v);
+  }
+
+  selectCategory(categoryId: number): void {
+    this.postForm.get('categoryId')?.setValue(categoryId);
+    this.postForm.get('categoryId')?.markAsTouched();
+    this.isDropdownOpen.set(false);
+  }
+
+  onCreatePostSubmit(): void {
+    if (this.postForm.invalid || this.isSubmittingPost()) return;
+
+    this.isSubmittingPost.set(true);
+    this.postError.set('');
+
+    const { title, content, categoryId } = this.postForm.value;
+
+    this.postService.createPost(title, content, Number(categoryId)).subscribe({
+      next: () => {
+        this.isSubmittingPost.set(false);
+        this.isCreateModalOpen.set(false);
+        this.postForm.reset();
+        
+        this.selectedCategoryId.set(undefined);
+        this.searchQuery.set('');
+        this.currentPage.set(1);
+        this.loadPosts();
+      },
+      error: (err) => {
+        this.isSubmittingPost.set(false);
+        this.postError.set(err.error?.message || 'Could not create post. Please try again.');
+      }
+    });
   }
 
   getRelativeTime(dateStr: string): string {
