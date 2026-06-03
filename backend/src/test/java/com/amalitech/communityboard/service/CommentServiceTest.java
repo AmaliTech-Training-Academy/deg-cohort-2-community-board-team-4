@@ -74,6 +74,7 @@ class CommentServiceTest {
         @Test
         @DisplayName("maps each comment to a response ordered as returned by the repository")
         void mapsCommentsToResponses() {
+            when(postRepository.existsById(100L)).thenReturn(true);
             when(commentRepository.findByPostIdOrderByCreatedAtAsc(100L))
                     .thenReturn(List.of(comment));
 
@@ -84,6 +85,17 @@ class CommentServiceTest {
             assertThat(response.getId()).isEqualTo(500L);
             assertThat(response.getContent()).isEqualTo("Nice post");
             assertThat(response.getAuthorName()).isEqualTo("Alice");
+        }
+
+        @Test
+        @DisplayName("throws when the post does not exist")
+        void throwsWhenPostNotFound() {
+            when(postRepository.existsById(-1L)).thenReturn(false);
+
+            assertThatThrownBy(() -> commentService.getCommentsByPost(-1L))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("Post not found with id -1");
+            verify(commentRepository, never()).findByPostIdOrderByCreatedAtAsc(any());
         }
     }
 
