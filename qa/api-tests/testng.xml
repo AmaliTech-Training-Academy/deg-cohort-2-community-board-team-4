@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
-<suite name="CommunityBoard Test Suite">
-    <test name="Auth Tests">
+<suite name="CommunityBoard API Test Suite">
+
+    <test name="Auth API Tests">
         <classes>
             <class name="com.amalitech.qa.tests.AuthApiTest"/>
         </classes>
     </test>
+
+    <test name="Posts API Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.PostsApiTest"/>
+        </classes>
+    </test>
+
+    <test name="Comments API Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.CommentsApiTest"/>
+        </classes>
+    </test>
+
 </suite>
