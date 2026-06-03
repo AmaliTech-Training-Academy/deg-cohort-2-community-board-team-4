@@ -50,3 +50,4 @@ ansible/vault.yml
 *.ppk
 id_rsa*
 id_ed25519*
+inventory.ini
