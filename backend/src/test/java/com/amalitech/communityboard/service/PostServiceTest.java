@@ -193,17 +193,16 @@ class PostServiceTest {
         }
 
         @Test
-        @DisplayName("does not look up a category when categoryId is null")
-        void createsWithoutCategory() {
-            PostRequest request = new PostRequest("New title", "New content", null);
+        @DisplayName("throws and does not save when the category does not exist")
+        void throwsWhenCategoryNotFound() {
+            PostRequest request = new PostRequest("New title", "New content", 99L);
             when(userRepository.findById(1L)).thenReturn(Optional.of(author));
-            when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-            PostResponse result = postService.createPost(request, 1L);
-
-            verify(categoryRepository, never()).findById(any());
-            assertThat(result.getCategoryName()).isNull();
-            assertThat(result.getCategoryId()).isNull();
+            assertThatThrownBy(() -> postService.createPost(request, 1L))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("Category not found with id 99");
+            verify(postRepository, never()).save(any());
         }
     }
 
@@ -214,8 +213,9 @@ class PostServiceTest {
         @Test
         @DisplayName("updates the post when the requester is the author")
         void updatesWhenAuthor() {
-            PostRequest request = new PostRequest("Updated", "Updated body", null);
+            PostRequest request = new PostRequest("Updated", "Updated body", 10L);
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
+            when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
             PostResponse result = postService.updatePost(100L, request, 1L);
