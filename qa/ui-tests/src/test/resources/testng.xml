@@ -19,4 +19,10 @@
         </classes>
     </test>
 
+    <test name="Dashboard UI Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.DashboardUiTest"/>
+        </classes>
+    </test>
+
 </suite>

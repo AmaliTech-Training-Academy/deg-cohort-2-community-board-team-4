@@ -82,4 +82,8 @@ public class LoginPage {
     public void waitForRedirectToDashboard() {
         helper.waitForUrlToContain("/dashboard");
     }
+
+    public void waitForRedirectToRegister() {
+        helper.waitForUrlToContain("/auth/register");
+    }
 }
