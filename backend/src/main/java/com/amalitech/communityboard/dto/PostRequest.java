@@ -1,6 +1,7 @@
 package com.amalitech.communityboard.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -11,5 +12,6 @@ public class PostRequest {
     private String title;
     @NotBlank
     private String content;
+    @NotNull(message = "categoryId is required")
     private Long categoryId;
 }
