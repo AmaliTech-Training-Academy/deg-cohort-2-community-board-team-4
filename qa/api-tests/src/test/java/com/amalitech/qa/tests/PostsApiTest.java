@@ -21,7 +21,7 @@ public class PostsApiTest extends BaseTest {
                 .when()
                 .post("/posts")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .extract().path("id");
     }
     // ✅ Create post — all 4 categories (runs 4 times)
@@ -45,7 +45,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Create post — missing fields → 400 (runs twice)
-    @Test(dataProvider = "createPostInvalid", dataProviderClass = PostsDataProvider.class)
+    @Test(dataProvider = "createPostMissingData", dataProviderClass = PostsDataProvider.class)
     public void testCreatePostMissingFields(String body) {
         given()
                 .contentType(ContentType.JSON)
@@ -57,6 +57,21 @@ public class PostsApiTest extends BaseTest {
                 .then()
                 .log().ifValidationFails()
                 .statusCode(400);
+    }
+
+    // ✅ Create post — missing fields → 400 (runs twice)
+    @Test(dataProvider = "createPostWrongData", dataProviderClass = PostsDataProvider.class)
+    public void testCreatePostWrongCategory(String body) {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .log().all()
+                .body(body)
+                .when()
+                .post("/posts")
+                .then()
+                .log().ifValidationFails()
+                .statusCode(404);
     }
 
     // ✅ Create post — no auth → 401
@@ -200,7 +215,7 @@ public class PostsApiTest extends BaseTest {
                 .when()
                 .post("/posts")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .extract().path("id");
     }
 
