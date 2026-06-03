@@ -71,18 +71,16 @@ public class PostService {
 
     public PostResponse createPost(PostRequest request, Long userId) {
         User author = getUser(userId);
+        Category category = getCategory(request.getCategoryId());
         Post post = Post.builder()
                 .title(request.getTitle())
                 .slug(generateUniqueSlug(request.getTitle()))
                 .content(request.getContent())
                 .author(author)
+                .category(category)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-        if (request.getCategoryId() != null) {
-            categoryRepository.findById(request.getCategoryId())
-                    .ifPresent(post::setCategory);
-        }
         return toResponse(postRepository.save(post));
     }
 
@@ -95,10 +93,7 @@ public class PostService {
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setUpdatedAt(LocalDateTime.now());
-        if (request.getCategoryId() != null) {
-            categoryRepository.findById(request.getCategoryId())
-                    .ifPresent(post::setCategory);
-        }
+        post.setCategory(getCategory(request.getCategoryId()));
         return toResponse(postRepository.save(post));
     }
 
@@ -116,6 +111,11 @@ public class PostService {
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
+    }
+
+    private Category getCategory(Long categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id " + categoryId));
     }
 
     public Page<PostResponse> searchPosts(String category, String keyword,
