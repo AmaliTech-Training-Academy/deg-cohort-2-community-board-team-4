@@ -25,8 +25,8 @@ from sqlalchemy.engine import Engine
 
 # Allow `python scripts/init_db.py` to import sibling packages from the root.
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from config import APP_ENV, DATABASE_URL, DB_CONFIG, IS_PRODUCTION  # noqa: E402
-from utils import get_logger  # noqa: E402
+from config import APP_ENV, DB_CONFIG, IS_PRODUCTION  # noqa: E402
+from utils import dispose_engine, get_engine, get_logger  # noqa: E402
 
 logger = get_logger("init_db")
 
@@ -157,11 +157,11 @@ def main() -> None:
     args = parse_args()
     guard_drop(args.drop, args.force)
     create_database()
-    engine = create_engine(DATABASE_URL)
+    engine = get_engine()
     try:
         create_tables(engine, args.drop)
     finally:
-        engine.dispose()
+        dispose_engine()
     logger.info("Init complete.")
 
 
