@@ -35,17 +35,11 @@
   gap: 1.5rem;
 }
 
-/* Icon inside projected app-button (analytics) */
-.header-actions .nav-icon {
-  width: 16px;
-  height: 16px;
-}
-
 .nav-link-analytics {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--color-primary);
+  color: var(--color-secondary);
   font-weight: 600;
   font-size: 0.9rem;
   text-decoration: none;
@@ -59,6 +53,17 @@
 
   &:hover {
     color: var(--color-accent);
+  }
+
+  &.active {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--border-radius-input);
+
+    .nav-icon {
+      filter: brightness(0) invert(1);
+    }
   }
 }
 
