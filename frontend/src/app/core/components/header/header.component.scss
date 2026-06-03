@@ -35,6 +35,12 @@
   gap: 1.5rem;
 }
 
+/* Icon inside projected app-button (analytics) */
+.header-actions .nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .nav-link-analytics {
   display: flex;
   align-items: center;
