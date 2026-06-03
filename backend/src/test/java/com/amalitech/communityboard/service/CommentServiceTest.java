@@ -162,6 +162,20 @@ class CommentServiceTest {
         }
 
         @Test
+        @DisplayName("allows the post owner to delete a comment on their post")
+        void deletesWhenPostOwner() {
+            Comment othersComment = Comment.builder()
+                    .id(501L).content("From Bob").post(post).author(otherUser)
+                    .build();
+            when(commentRepository.findById(501L)).thenReturn(Optional.of(othersComment));
+            when(userRepository.findById(1L)).thenReturn(Optional.of(author));
+
+            commentService.deleteComment(501L, 1L);
+
+            verify(commentRepository).delete(othersComment);
+        }
+
+        @Test
         @DisplayName("throws and does not delete when a non-author, non-admin requests deletion")
         void rejectsNonAuthorNonAdmin() {
             when(commentRepository.findById(500L)).thenReturn(Optional.of(comment));

@@ -45,8 +45,10 @@ public class CommentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id " + commentId));
         User requester = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
-        if (!comment.getAuthor().getId().equals(userId)
-                && !requester.getRole().name().equals("ADMIN")) {
+        boolean isCommentAuthor = comment.getAuthor().getId().equals(userId);
+        boolean isPostOwner = comment.getPost().getAuthor().getId().equals(userId);
+        boolean isAdmin = requester.getRole().name().equals("ADMIN");
+        if (!isCommentAuthor && !isPostOwner && !isAdmin) {
             throw new ForbiddenException("Not authorized to delete this comment");
         }
         commentRepository.delete(comment);
