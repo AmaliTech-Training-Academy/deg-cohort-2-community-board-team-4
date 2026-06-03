@@ -59,7 +59,13 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.message || 'Invalid email or password';
+        if (err.status === 401) {
+          this.errorMessage = 'No user found with these credentials';
+        } else if (err.status === 0) {
+          this.errorMessage = 'Unable to connect to the server. Please check your network connection.';
+        } else {
+          this.errorMessage = err.error?.message || 'Invalid email or password';
+        }
       }
     });
   }
