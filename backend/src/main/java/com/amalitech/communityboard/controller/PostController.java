@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -45,7 +46,6 @@ public class PostController {
         return ResponseEntity.ok(postService.searchPosts(category, keyword, from, to, page, size));
     }
 
-    // Single route for both /api/posts/{id} and /api/posts/{slug};
     @GetMapping("/{identifier}")
     public ResponseEntity<PostResponse> getPost(@PathVariable String identifier) {
         return ResponseEntity.ok(postService.getPostByIdOrSlug(identifier));
@@ -55,7 +55,7 @@ public class PostController {
     public ResponseEntity<PostResponse> createPost(
             @Valid @RequestBody PostRequest request,
             @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(postService.createPost(request, userId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(request, userId));
     }
 
     @PutMapping("/{id}")
