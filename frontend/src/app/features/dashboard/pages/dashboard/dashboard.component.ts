@@ -5,11 +5,12 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { PostService } from '../../../../core/services/post.service';
 import { Post, Category } from '../../../../core/models/post.interface';
 import { ButtonComponent } from '../../../../core/components/button/button.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ButtonComponent],
+  imports: [CommonModule, RouterLink, ButtonComponent, BreadcrumbComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -19,6 +20,10 @@ export class DashboardComponent implements OnInit {
   private router = inject(Router);
 
   currentUser = this.authService.currentUser;
+
+  breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Home', home: true },
+  ];
 
   categories = signal<Category[]>([]);
   posts = signal<Post[]>([]);

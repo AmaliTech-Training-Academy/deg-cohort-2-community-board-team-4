@@ -109,6 +109,9 @@
 
   <!-- Main Body Content -->
   <main class="main-content">
+    <!-- Breadcrumb -->
+    <app-breadcrumb [items]="breadcrumbItems" />
+
     <!-- Unified Search and Create Post Bar -->
     <div class="actions-bar">
       <form class="search-form" (submit)="onSearch($event)">
