@@ -60,7 +60,7 @@ export class LoginComponent {
       error: (err) => {
         this.isLoading = false;
         if (err.status === 401) {
-          this.errorMessage = 'No user found with these credentials';
+          this.errorMessage = 'Invalid email or password';
         } else if (err.status === 0) {
           this.errorMessage = 'Unable to connect to the server. Please check your network connection.';
         } else {
