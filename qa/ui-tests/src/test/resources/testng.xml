@@ -25,4 +25,10 @@
         </classes>
     </test>
 
+    <test name="Post Detail UI Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.PostDetailUiTest"/>
+        </classes>
+    </test>
+
 </suite>
