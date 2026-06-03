@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
-public class PostApiTest extends BaseTest {
+public class PostsApiTest extends BaseTest {
 
     // ✅ Create post — all 4 categories (runs 4 times)
     @Test(dataProvider = "createPostAllCategories", dataProviderClass = PostsDataProvider.class)
@@ -19,12 +19,15 @@ public class PostApiTest extends BaseTest {
                 .log().all()
                 .body(body)
                 .when()
-                .post("/posts")           // ← update when endpoint confirmed
+                .post("/posts")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(201)
                 .body("id", notNullValue())
-                .body("title", notNullValue());
+                .body("title", notNullValue())
+                .body("slug", notNullValue())
+                .body("categoryId", notNullValue())
+                .body("authorEmail", equalTo("admin@amalitech.com"));
     }
 
     // ✅ Create post — missing fields → 400 (runs twice)
@@ -36,7 +39,7 @@ public class PostApiTest extends BaseTest {
                 .log().all()
                 .body(body)
                 .when()
-                .post("/posts")           // ← update when endpoint confirmed
+                .post("/posts")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(400);
@@ -50,39 +53,72 @@ public class PostApiTest extends BaseTest {
                 .log().all()
                 .body("{\"title\": \"Unauth Post\", \"content\": \"Content\", \"categoryId\": 1}")
                 .when()
-                .post("/posts")           // ← update when endpoint confirmed
+                .post("/posts")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(401);
     }
 
-    // ✅ Get all posts
+    // ✅ Get all posts — check pagination structure
     @Test
     public void testGetAllPosts() {
         given()
                 .log().all()
                 .when()
-                .get("/posts")            // ← update when endpoint confirmed
+                .get("/posts")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(200)
-                .body("$", not(empty()));
+                .body("content", not(empty()))
+                .body("content[0].id", notNullValue())
+                .body("content[0].title", notNullValue())
+                .body("content[0].slug", notNullValue())
+//                .body("content[0].categoryName", notNullValue())
+                .body("content[0].authorName", notNullValue())
+                .body("content[0].authorEmail", notNullValue())
+                .body("totalElements", greaterThan(0))
+                .body("totalPages", greaterThan(0))
+                .body("empty", equalTo(false));
     }
 
-    // ✅ Get single post — valid ID
+    // ✅ Get all posts — with page and size params
+    @Test
+    public void testGetAllPostsWithPagination() {
+        given()
+                .queryParam("page", 0)
+                .queryParam("size", 1)
+                .log().all()
+                .when()
+                .get("/posts")
+                .then()
+                .log().ifValidationFails()
+                .statusCode(200)
+                .body("content", hasSize(1))
+                .body("size", equalTo(1))
+                .body("number", equalTo(0));
+    }
+
+    // ✅ Get single post — valid identifier
     @Test
     public void testGetSinglePost() {
         given()
                 .log().all()
                 .when()
-                .get("/posts/1")          // uses seeded post ID 1
+                .get("/posts/1")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(200)
-                .body("id", equalTo(1));
+                .body("id", equalTo(1))
+                .body("title", equalTo("Welcome to CommunityBoard!"))
+                .body("slug", equalTo("welcome-to-communityboard"))
+                .body("categoryName", equalTo("General"))
+                .body("categoryId", equalTo(1))
+                .body("authorName", equalTo("Admin User"))
+                .body("authorEmail", equalTo("admin@amalitech.com"))
+                .body("commentCount", notNullValue());
     }
 
-    // ✅ Get single post — invalid ID → 404
+    // ✅ Get single post — invalid identifier → 404
     @Test
     public void testGetPostNotFound() {
         given()
@@ -103,10 +139,12 @@ public class PostApiTest extends BaseTest {
                 .log().all()
                 .body("{\"title\": \"Updated Title\", \"content\": \"Updated content\", \"categoryId\": 1}")
                 .when()
-                .put("/posts/1")          // seeded post owned by admin
+                .put("/posts/1")
                 .then()
                 .log().ifValidationFails()
-                .statusCode(200);
+                .statusCode(200)
+                .body("title", equalTo("Updated Title"))
+                .body("content", equalTo("Updated content"));
     }
 
     // ✅ Update post — non-owner → 403
@@ -118,7 +156,7 @@ public class PostApiTest extends BaseTest {
                 .log().all()
                 .body("{\"title\": \"Hacked Title\", \"content\": \"Hacked content\", \"categoryId\": 1}")
                 .when()
-                .put("/posts/1")          // post owned by admin, user tries to update
+                .put("/posts/1")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(403);
@@ -131,20 +169,20 @@ public class PostApiTest extends BaseTest {
                 .header("Authorization", "Bearer " + userToken)
                 .log().all()
                 .when()
-                .delete("/posts/1")       // post owned by admin
+                .delete("/posts/1")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(403);
     }
 
     // ✅ ADMIN can delete any post
-    @Test
+    @Test(priority = 99) // run last so post exists for other tests
     public void testDeletePostAsAdmin() {
         given()
                 .header("Authorization", "Bearer " + adminToken)
                 .log().all()
                 .when()
-                .delete("/posts/2")       // seeded post ID 2
+                .delete("/posts/2")
                 .then()
                 .log().ifValidationFails()
                 .statusCode(204);

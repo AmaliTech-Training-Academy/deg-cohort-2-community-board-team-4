@@ -17,25 +17,25 @@ public class BaseTest {
     public void setup() {
         RestAssured.baseURI = ConfigReader.get("base.url");
 
-//        // Extract admin token
-//        adminToken = given()
-//                .contentType(ContentType.JSON)
-//                .body(JsonReader.getTestData("auth/login.json", "valid_1"))
-//                .when()
-//                .post("/auth/login")
-//                .then()
-//                .statusCode(200)
-//                .extract().path("token");
-//
-//        // Extract user token
-//        userToken = given()
-//                .contentType(ContentType.JSON)
-//                .body(JsonReader.getTestData("auth/login.json", "valid_2"))
-//                .when()
-//                .post("/auth/login")
-//                .then()
-//                .statusCode(200)
-//                .extract().path("token");
-//    }
+        // Extract admin token
+        adminToken = given()
+                .contentType(ContentType.JSON)
+                .body(JsonReader.getTestData("auth/login.json", "valid_1"))
+                .when()
+                .post("/auth/login")
+                .then()
+                .statusCode(200)
+                .extract().path("token");
+
+        // Extract user token
+        userToken = given()
+                .contentType(ContentType.JSON)
+                .body(JsonReader.getTestData("auth/login.json", "valid_2"))
+                .when()
+                .post("/auth/login")
+                .then()
+                .statusCode(200)
+                .extract().path("token");
     }
+
 }
