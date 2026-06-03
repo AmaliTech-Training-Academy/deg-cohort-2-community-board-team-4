@@ -18,6 +18,10 @@ export const routes: Routes = [
       {
         path: 'posts/:id',
         loadComponent: () => import('./features/posts/pages/post-detail/post-detail.component').then(m => m.PostDetailComponent)
+      },
+      {
+        path: 'analytics',
+        loadComponent: () => import('./features/dashboard/pages/analytics/analytics.component').then(m => m.AnalyticsComponent)
       }
     ]
   },
