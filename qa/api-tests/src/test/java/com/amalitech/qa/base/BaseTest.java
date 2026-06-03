@@ -36,6 +36,8 @@ public class BaseTest {
                 .then()
                 .statusCode(200)
                 .extract().path("token");
+
+
     }
 
 }

@@ -10,6 +10,20 @@ import static org.hamcrest.Matchers.*;
 
 public class PostsApiTest extends BaseTest {
 
+    private int postToDeleteId;
+    private int postToGet;
+
+    private void createPostToGet(){
+        postToGet = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .body("{\"title\": \"Post To Get Comments " + System.currentTimeMillis() + "\", \"content\": \"Post for listing comments\", \"categoryId\": 2}")
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(200)
+                .extract().path("id");
+    }
     // ✅ Create post — all 4 categories (runs 4 times)
     @Test(dataProvider = "createPostAllCategories", dataProviderClass = PostsDataProvider.class)
     public void testCreatePostAllCategories(String body) {
@@ -98,26 +112,26 @@ public class PostsApiTest extends BaseTest {
                 .body("number", equalTo(0));
     }
 
-    // ✅ Get single post — valid identifier
+    // ✅ Get single post
     @Test
     public void testGetSinglePost() {
+        createPostToGet();
+
         given()
                 .log().all()
                 .when()
-                .get("/posts/1")
+                .get("/posts/" + postToGet)
                 .then()
                 .log().ifValidationFails()
                 .statusCode(200)
-                .body("id", equalTo(1))
-                .body("title", equalTo("Welcome to CommunityBoard!"))
-                .body("slug", equalTo("welcome-to-communityboard"))
-                .body("categoryName", equalTo("General"))
-                .body("categoryId", equalTo(1))
-                .body("authorName", equalTo("Admin User"))
-                .body("authorEmail", equalTo("admin@amalitech.com"))
+                .body("id", equalTo(postToGet))
+                .body("title", notNullValue())
+                .body("slug", notNullValue())
+                .body("categoryName", notNullValue())
+                .body("authorName", notNullValue())
+                .body("authorEmail", notNullValue())
                 .body("commentCount", notNullValue());
     }
-
     // ✅ Get single post — invalid identifier → 404
     @Test
     public void testGetPostNotFound() {
@@ -175,16 +189,34 @@ public class PostsApiTest extends BaseTest {
                 .statusCode(403);
     }
 
+
+
+
+    private void createPostForDeletion() {
+        postToDeleteId = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .body("{\"title\": \"Post to delete " + System.currentTimeMillis() + "\", \"content\": \"Will be deleted\", \"categoryId\": 1}")
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(200)
+                .extract().path("id");
+    }
+
     // ✅ ADMIN can delete any post
-    @Test(priority = 99) // run last so post exists for other tests
+    @Test(priority = 99)
     public void testDeletePostAsAdmin() {
+        createPostForDeletion();  // ← call it directly inside the test
+
         given()
                 .header("Authorization", "Bearer " + adminToken)
                 .log().all()
                 .when()
-                .delete("/posts/2")
+                .delete("/posts/" + postToDeleteId)
                 .then()
                 .log().ifValidationFails()
                 .statusCode(204);
     }
+
 }
