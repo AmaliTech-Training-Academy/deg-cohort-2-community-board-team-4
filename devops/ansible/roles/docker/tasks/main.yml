@@ -1,0 +1,29 @@
+---
+- name: Install Docker Engine
+  ansible.builtin.command: amazon-linux-extras install docker -y
+  args:
+    creates: /usr/bin/docker
+
+- name: Enable and start the Docker service
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add ec2-user to the docker group
+  ansible.builtin.user:
+    name: ec2-user
+    groups: docker
+    append: true
+
+- name: Ensure the Docker CLI plugins directory exists
+  ansible.builtin.file:
+    path: /usr/local/lib/docker/cli-plugins
+    state: directory
+    mode: "0755"
+
+- name: Install Docker Compose V2 plugin
+  ansible.builtin.get_url:
+    url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+    dest: /usr/local/lib/docker/cli-plugins/docker-compose
+    mode: "0755"

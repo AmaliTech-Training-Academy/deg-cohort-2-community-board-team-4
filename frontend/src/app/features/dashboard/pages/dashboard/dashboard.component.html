@@ -1,16 +1,227 @@
-<div style="padding: 2.5rem; font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; text-align: center;">
-  <div style="margin-bottom: 2rem;">
-    <img src="assets/images/logo.svg" alt="Ping Logo" style="height: 48px; margin-bottom: 1.5rem;">
-    <h1 style="color: #0f2233; font-size: 2.25rem; font-weight: 700; margin: 0 0 0.5rem 0;">Welcome to Ping!</h1>
-    <p style="color: #5c6f81; font-size: 1rem; margin: 0;">Your neighborhood bulletin board is ready.</p>
-  </div>
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo-wrapper">
+        <img src="assets/images/logo.svg" alt="Ping Logo" class="app-logo">
+      </div>
 
-  <div style="background-color: #f3f5f7; padding: 2rem; border-radius: 12px; border: 1px solid #eef1f4; margin-bottom: 2rem; text-align: left;">
-    <h2 style="color: #0f2233; font-size: 1.25rem; margin-top: 0; margin-bottom: 0.75rem;">Standup Demo Sandbox</h2>
-    <p style="color: #5c6f81; font-size: 0.9rem; margin-bottom: 0;">You are currently logged in as a mock authenticated user. Clicking the button below will invoke <code>authService.logout()</code>, clear localStorage tokens, and redirect you back to the public login screen.</p>
-  </div>
+      <!-- Desktop Header Actions -->
+      <div class="header-actions desktop-only">
+        <a class="nav-link-analytics">
+          <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+          Analytics
+        </a>
 
-  <button (click)="onLogout()" style="padding: 0.85rem 2rem; background-color: #0f2233; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: background-color 0.2s ease;">
-    Log Out
-  </button>
+        <!-- User Profile Card -->
+        <div class="user-profile-card">
+          <div class="avatar-circle">
+            {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+          </div>
+          <div class="user-details">
+            <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
+            <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
+          </div>
+        </div>
+
+        <button class="btn-logout" (click)="onLogout()">
+          <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
+          Log out
+        </button>
+      </div>
+
+      <!-- Mobile Hamburger Button -->
+      <button class="btn-hamburger mobile-only" (click)="toggleMobileMenu()" aria-label="Toggle Menu">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation Drawer -->
+  @if (isMobileMenuOpen()) {
+    <div class="mobile-drawer-backdrop" (click)="toggleMobileMenu()">
+      <div class="mobile-drawer" (click)="$event.stopPropagation()">
+        <div class="drawer-header">
+          <div class="drawer-user-info">
+            <div class="avatar-circle">
+              {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+            </div>
+            <div class="user-details">
+              <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
+              <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
+            </div>
+          </div>
+          <button class="btn-close-drawer" (click)="toggleMobileMenu()">✕</button>
+        </div>
+
+        <nav class="drawer-nav">
+          <a class="drawer-nav-item">
+            <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+            Analytics
+          </a>
+          <button class="btn-drawer-logout" (click)="onLogout(); toggleMobileMenu()">
+            <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
+            Log out
+          </button>
+        </nav>
+      </div>
+    </div>
+  }
+
+  <!-- Main Body Content -->
+  <main class="main-content">
+    
+    <!-- Unified Search and Create Post Bar -->
+    <div class="actions-bar">
+      <form class="search-form" (submit)="onSearch($event)">
+        <div class="search-bar-container">
+          <div class="search-input-wrapper">
+            <input 
+              type="text" 
+              placeholder="Search by title of post..." 
+              [value]="searchQuery()"
+              (input)="onSearchInput(searchQueryInput.value)" 
+              #searchQueryInput
+              class="search-input"
+            >
+            @if (searchQuery()) {
+              <button type="button" class="btn-clear-search" (click)="onClearSearch(); searchQueryInput.value = ''">
+                <img src="assets/icons/x.svg" alt="Clear Icon">
+              </button>
+            }
+          </div>
+          <button type="submit" class="btn-search">
+            <img src="assets/icons/search.svg" alt="Search Icon" class="search-icon">
+          </button>
+        </div>
+      </form>
+      <button class="btn-create-post">
+        <span class="plus-icon">+</span> Create post
+      </button>
+    </div>
+
+    <!-- Categories Filter Bar -->
+    <section class="categories-bar">
+      <span class="categories-label">Categories:</span>
+      <div class="categories-pills">
+        <button 
+          class="pill-button" 
+          [class.active]="selectedCategoryId() === undefined" 
+          (click)="onSelectCategory(undefined)"
+        >
+          All
+        </button>
+        @for (category of categories(); track category.id) {
+          <button 
+            class="pill-button" 
+            [class.active]="selectedCategoryId() === category.id" 
+            (click)="onSelectCategory(category.id)"
+          >
+            {{ category.name }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <!-- Post List / Loading / Empty States -->
+    <section class="posts-section">
+      @if (isLoading()) {
+        <!-- Skeleton Loading Loader -->
+        <div class="skeleton-list">
+          @for (item of [1, 2, 3]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-header">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-badge"></div>
+              </div>
+              <div class="skeleton-body-line"></div>
+              <div class="skeleton-body-line short"></div>
+              <div class="skeleton-footer">
+                <div class="skeleton-meta"></div>
+                <div class="skeleton-comments"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (posts().length === 0) {
+        <!-- Empty State -->
+        <div class="empty-state">
+          <img src="assets/icons/no-post.svg" alt="No Posts" class="empty-illustration">
+          <p class="empty-message">No posts have been made yet</p>
+        </div>
+      } @else {
+        <!-- Post Cards List -->
+        <div class="posts-list">
+          @for (post of posts(); track post.id) {
+            <article class="post-card" [routerLink]="['posts', post.id]">
+              <div class="post-card-header">
+                <h2 class="post-title">{{ post.title }}</h2>
+                <span class="category-badge" [ngClass]="post.category?.name?.toLowerCase() || ''">
+                  {{ post.category?.name === 'Event' ? 'Events' : post.category?.name }}
+                </span>
+              </div>
+              
+              <p class="post-excerpt">{{ post.content }}</p>
+
+              <footer class="post-card-footer">
+                <div class="meta-left">
+                  <span class="post-author">{{ post.author?.name }}</span>
+                  <span class="meta-dot"></span>
+                  <span class="post-date">
+                    <svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    {{ getRelativeTime(post.createdAt) }}
+                  </span>
+                </div>
+                
+                <div class="meta-right">
+                  <span class="comment-count">
+                    <img src="assets/icons/message-circle.svg" alt="Comment Icon" class="meta-icon">
+                    {{ post.commentCount }}
+                  </span>
+                </div>
+              </footer>
+            </article>
+          }
+        </div>
+
+        <!-- Pagination Controls -->
+        @if (totalPages() > 1) {
+          <nav class="pagination" aria-label="Pagination">
+            <button 
+              class="pagination-btn" 
+              [disabled]="currentPage() === 1" 
+              (click)="onPageChange(currentPage() - 1)"
+            >
+              Previous
+            </button>
+            
+            <div class="pagination-numbers">
+              @for (page of pagesArray(); track page) {
+                <button 
+                  class="pagination-num-btn" 
+                  [class.active]="currentPage() === page" 
+                  (click)="onPageChange(page)"
+                >
+                  {{ page }}
+                </button>
+              }
+            </div>
+
+            <button 
+              class="pagination-btn" 
+              [disabled]="currentPage() === totalPages()" 
+              (click)="onPageChange(currentPage() + 1)"
+            >
+              Next
+            </button>
+          </nav>
+        }
+      }
+    </section>
+  </main>
 </div>

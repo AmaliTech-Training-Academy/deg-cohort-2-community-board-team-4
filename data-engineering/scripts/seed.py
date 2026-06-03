@@ -26,13 +26,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from faker import Faker
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 # Allow `python scripts/seed.py` to import sibling modules from the package root.
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from config import APP_ENV, DATABASE_URL, IS_PRODUCTION, SEED  # noqa: E402
-from utils import get_logger  # noqa: E402
+from config import APP_ENV, IS_PRODUCTION, SEED  # noqa: E402
+from utils import dispose_engine, get_engine, get_logger  # noqa: E402
 
 logger = get_logger("seed")
 
@@ -210,11 +210,11 @@ def guard_environment(force: bool) -> None:
 def main() -> None:
     args = parse_args()
     guard_environment(args.force)
-    engine = create_engine(DATABASE_URL)
+    engine = get_engine()
     try:
         run(engine, args.users, args.posts, args.comments, args.reset)
     finally:
-        engine.dispose()
+        dispose_engine()
 
 
 if __name__ == "__main__":
