@@ -19,6 +19,9 @@ public class CommentService {
     private final UserRepository userRepository;
 
     public List<CommentResponse> getCommentsByPost(Long postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new ResourceNotFoundException("Post not found with id " + postId);
+        }
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId).stream()
                 .map(this::toResponse).toList();
     }
