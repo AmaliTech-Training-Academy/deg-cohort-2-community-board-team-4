@@ -75,6 +75,7 @@ Image names: `communityboard-backend`, `communityboard-frontend`,
 | `DOCKERHUB_TOKEN` | yes (for image push) | Docker Hub login (Account → Security → access token) |
 | `SNYK_TOKEN` | optional | Snyk SCA (skipped if unset) |
 | `SONAR_TOKEN`, `SONAR_HOST_URL` | only when enabling Sonar | SonarQube |
+| `DEV_API_URL` / `TEST_API_URL` / `PROD_API_URL` | for the frontend image | Backend API URL baked into the Angular build per branch (`dev`/`test`/`main`). Injected via `--build-arg API_URL` → replaces `__API_URL__` in `environment.prod.ts`. |
 
 ### Variables
 | Variable | Required? | Default | Purpose |

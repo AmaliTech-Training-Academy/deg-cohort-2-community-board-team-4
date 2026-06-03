@@ -97,7 +97,7 @@
           </button>
         </div>
       </form>
-      <button class="btn-create-post">
+      <button class="btn-create-post" (click)="openCreateModal()">
         <span class="plus-icon">+</span> Create post
       </button>
     </div>
@@ -155,7 +155,7 @@
         <!-- Post Cards List -->
         <div class="posts-list">
           @for (post of posts(); track post.id) {
-            <article class="post-card" [routerLink]="['posts', post.id]">
+            <article class="post-card" [routerLink]="['posts', post.slug]">
               <div class="post-card-header">
                 <h2 class="post-title">{{ post.title }}</h2>
                 <span class="category-badge" [ngClass]="post.category?.name?.toLowerCase() || ''">
@@ -224,4 +224,112 @@
       }
     </section>
   </main>
+
+  <!-- Create Post Modal -->
+  @if (isCreateModalOpen()) {
+    <div class="modal-overlay" (click)="closeCreateModal()">
+      <div class="modal-card" (click)="isDropdownOpen.set(false); $event.stopPropagation()">
+        
+        <header class="modal-header">
+          <div class="mobile-breadcrumbs mobile-only">
+            <span class="breadcrumb-home-link">
+              <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              Home
+            </span>
+            <span class="breadcrumb-sep">
+              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            <span class="breadcrumb-curr">Create Post</span>
+          </div>
+          <h3 class="modal-title">Create New Post</h3>
+          <button type="button" class="btn-close-modal desktop-only" (click)="closeCreateModal()">✕</button>
+        </header>
+
+        @if (postError()) {
+          <div class="modal-error-banner">
+            {{ postError() }}
+          </div>
+        }
+
+        <form [formGroup]="postForm" (ngSubmit)="onCreatePostSubmit()" class="modal-form">
+          <div class="form-group">
+            <label for="postTitle" class="form-label">Post Title</label>
+            <input 
+              id="postTitle"
+              type="text" 
+              formControlName="title"
+              placeholder="Enter a clear, descriptive title"
+              class="form-input"
+            >
+            @if (postForm.get('title')?.touched && postForm.get('title')?.errors?.['required']) {
+              <div class="validation-error">Title is required</div>
+            }
+            @if (postForm.get('title')?.touched && postForm.get('title')?.errors?.['maxlength']) {
+              <div class="validation-error">Title must be at most 255 characters</div>
+            }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <div class="custom-select-container">
+              <button 
+                type="button" 
+                class="custom-select-trigger" 
+                [class.open]="isDropdownOpen()"
+                (click)="toggleDropdown($event)"
+              >
+                <span>{{ selectedCategoryName() }}</span>
+                <span class="chevron-icon">
+                  @if (isDropdownOpen()) {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                  } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  }
+                </span>
+              </button>
+              
+              @if (isDropdownOpen()) {
+                <div class="custom-select-dropdown" (click)="$event.stopPropagation()">
+                  @for (category of categories(); track category.id) {
+                    <button 
+                      type="button"
+                      class="custom-select-option" 
+                      [class.selected]="postForm.get('categoryId')?.value === category.id"
+                      (click)="selectCategory(category.id)"
+                    >
+                      {{ category.name === 'Event' ? 'Events' : category.name }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            @if (postForm.get('categoryId')?.touched && postForm.get('categoryId')?.errors?.['required']) {
+              <div class="validation-error">Category is required</div>
+            }
+          </div>
+
+          <div class="form-group text-area-group">
+            <textarea 
+              id="postContent"
+              formControlName="content"
+              placeholder="Share the details of your post..."
+              class="form-textarea"
+              rows="6"
+            ></textarea>
+            @if (postForm.get('content')?.touched && postForm.get('content')?.errors?.['required']) {
+              <div class="validation-error">Content is required</div>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-modal-cancel" [disabled]="isSubmittingPost()" (click)="closeCreateModal()">Cancel</button>
+            <button type="submit" class="btn-modal-submit" [disabled]="postForm.invalid || isSubmittingPost()">
+              {{ isSubmittingPost() ? 'Creating...' : 'Create Post' }}
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  }
 </div>

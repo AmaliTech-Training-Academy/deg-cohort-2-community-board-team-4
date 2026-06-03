@@ -5,6 +5,7 @@ import com.amalitech.communityboard.dto.CommentResponse;
 import com.amalitech.communityboard.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class CommentController {
             @PathVariable Long postId,
             @Valid @RequestBody CommentRequest request,
             @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(commentService.createComment(postId, request, userId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.createComment(postId, request, userId));
     }
 
     @DeleteMapping("/api/comments/{id}")

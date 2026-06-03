@@ -5,11 +5,17 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
+# Backend API URL, baked in at build time (per environment). Defaults to
+# localhost for local/QA builds; CI passes --build-arg API_URL=<env secret>.
+ARG API_URL=http://localhost:8080/api
+
 COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY . .
-# Angular uses 'ng build' via the build script in package.json
+# Inject the API URL into the prod environment file (replaces __API_URL__),
+# then build. Angular uses 'ng build' (prod config) via the package.json script.
+RUN sed -i "s|__API_URL__|${API_URL}|g" src/environments/environment.prod.ts
 RUN npm run build
 
 # ---------- Stage 2: runtime ----------

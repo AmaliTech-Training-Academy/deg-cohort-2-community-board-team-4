@@ -16,14 +16,14 @@
 
       <div class="form-group">
         <label for="email">Email</label>
-        <div class="input-wrapper" [class.input-error]="shouldShowBlurError('email', 'required') || shouldShowBlurError('email', 'email')">
+        <div class="input-wrapper" [class.input-error]="shouldShowBlurError('email', 'required') || shouldShowBlurError('email', 'pattern')">
           <img src="assets/icons/mail.svg" alt="Mail Icon" class="input-icon">
           <input type="email" id="email" formControlName="email" placeholder="your@example.com" [readonly]="isLoading">
         </div>
         @if (shouldShowBlurError('email', 'required')) {
           <div class="error-message">Email is required</div>
-        } @else if (shouldShowBlurError('email', 'email')) {
-          <div class="error-message">Your email is incorrect</div>
+        } @else if (shouldShowBlurError('email', 'pattern')) {
+          <div class="error-message">Your email format is invalid or incomplete (e.g. name&#64;domain.com)</div>
         }
       </div>
 
