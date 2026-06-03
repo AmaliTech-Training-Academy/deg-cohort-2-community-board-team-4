@@ -1,8 +1,12 @@
 /* Header Styling */
-.app-header {
+:host {
   position: sticky;
   top: 0;
   z-index: 100;
+  display: block;
+}
+
+.app-header {
   background-color: var(--color-white);
   border-bottom: 1px solid var(--color-border);
 }
