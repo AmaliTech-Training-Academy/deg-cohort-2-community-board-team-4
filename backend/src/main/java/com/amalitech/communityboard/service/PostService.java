@@ -8,8 +8,11 @@ import com.amalitech.communityboard.repository.*;
 import com.amalitech.communityboard.util.SlugUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,8 +118,37 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
     }
 
-    // TODO: Implement search functionality
-    // public Page<PostResponse> searchPosts(String query, Pageable pageable) { ... }
+    public Page<PostResponse> searchPosts(String category, String keyword,
+                                          LocalDate from, LocalDate to, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // Treat blank query params as "no filter".
+        String categoryFilter = normalize(category);
+        String keywordFilter = normalize(keyword);
+        LocalDateTime fromFilter = from != null ? from.atStartOfDay() : null;
+        LocalDateTime toFilter = to != null ? to.atTime(LocalTime.MAX) : null;
+
+
+        Specification<Post> spec = Specification.allOf(
+                PostSpecifications.hasCategory(categoryFilter),
+                PostSpecifications.matchesKeyword(keywordFilter),
+                PostSpecifications.createdFrom(fromFilter),
+                PostSpecifications.createdTo(toFilter));
+
+        Page<Post> posts = postRepository.findAll(spec, pageable);
+        Map<Long, Integer> commentCounts = commentCountsFor(posts.getContent());
+        return posts.map(post -> toResponse(post, commentCounts.getOrDefault(post.getId(), 0)));
+    }
+
+    private static String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 
     private String generateUniqueSlug(String title) {
         String base = SlugUtil.toSlug(title);
