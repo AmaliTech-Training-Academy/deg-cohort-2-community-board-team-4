@@ -92,7 +92,13 @@ export class RegisterComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.message || 'Registration failed. Please try again.';
+        if (err.status === 409) {
+          this.errorMessage = 'This email is already registered';
+        } else if (err.status === 0) {
+          this.errorMessage = 'Unable to connect to the server. Please check your network connection.';
+        } else {
+          this.errorMessage = err.error?.message || 'Registration failed. Please try again.';
+        }
       }
     });
   }
