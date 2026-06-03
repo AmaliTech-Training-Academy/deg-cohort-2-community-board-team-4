@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="CommunityBoard UI Test Suite" verbose="1">
+
+    <listeners>
+        <listener class-name="com.amalitech.qa.utils.RetryListener"/>
+        <listener class-name="com.amalitech.qa.utils.TestExecutionListener"/>
+    </listeners>
+
+    <test name="Login UI Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.LoginUiTest"/>
+        </classes>
+    </test>
+
+    <test name="Register UI Tests">
+        <classes>
+            <class name="com.amalitech.qa.tests.RegisterUiTest"/>
+        </classes>
+    </test>
+
+</suite>
