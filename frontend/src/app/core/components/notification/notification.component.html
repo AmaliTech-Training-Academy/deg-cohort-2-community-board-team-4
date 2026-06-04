@@ -1,0 +1,18 @@
+<div class="toast-container">
+  @for (toast of toasts(); track toast.id) {
+    <div class="toast-item" [ngClass]="toast.type" role="alert">
+      <div class="toast-content">
+        <!-- Success checkmark circle -->
+        <div class="toast-icon-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="toast-svg">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        
+        <span class="toast-message">{{ toast.message }}</span>
+      </div>
+
+      <button type="button" class="btn-toast-close" (click)="onDismiss(toast.id)" aria-label="Close notification">✕</button>
+    </div>
+  }
+</div>

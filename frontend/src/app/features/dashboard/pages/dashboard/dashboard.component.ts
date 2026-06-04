@@ -10,6 +10,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ButtonComponent } from '../../../../core/components/button/button.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
 import { HeaderComponent } from '../../../../core/components/header/header.component';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,6 +25,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
+  private notificationService = inject(NotificationService);
 
 
   breadcrumbItems: BreadcrumbItem[] = [
@@ -92,8 +94,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   totalPages = computed(() => Math.ceil(this.totalPosts() / this.limit));
   pagesArray = computed(() => {
     const total = this.totalPages();
+    const current = this.currentPage();
+    if (total <= 3) {
+      const arr = [];
+      for (let i = 1; i <= total; i++) arr.push(i);
+      return arr;
+    }
+    const start = Math.max(1, Math.min(current - 1, total - 2));
+    const end = Math.min(total, start + 2);
     const arr = [];
-    for (let i = 1; i <= total; i++) arr.push(i);
+    for (let i = start; i <= end; i++) arr.push(i);
     return arr;
   });
 
@@ -349,6 +359,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.isCreateModalOpen.set(false);
         this.postForm.reset();
         this.selectedCategoryIdForPost.set(null);
+        this.notificationService.show('Ping! Your Post is Live🚀');
         
         this.router.navigate([], {
           relativeTo: this.route,

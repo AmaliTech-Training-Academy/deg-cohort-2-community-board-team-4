@@ -1,0 +1,138 @@
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--border-radius-input, 8px);
+  box-shadow: 0 10px 25px -5px rgba(15, 34, 51, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  pointer-events: auto;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  min-width: 280px;
+  max-width: 420px;
+  box-sizing: border-box;
+
+  /* Figma Success colors */
+  &.success {
+    background-color: #DEF7EC;
+    border: 1px solid #31C48D;
+    color: #166534;
+
+    .toast-icon-circle {
+      background-color: #166534;
+      color: #DEF7EC;
+    }
+
+    .btn-toast-close {
+      color: #166534;
+      &:hover {
+        background-color: rgba(22, 101, 52, 0.08);
+      }
+    }
+  }
+
+  /* Info state fallback */
+  &.info {
+    background-color: #E1EFFE;
+    border: 1px solid #76A9FA;
+    color: #1E429F;
+
+    .toast-icon-circle {
+      background-color: #1E429F;
+      color: #E1EFFE;
+    }
+
+    .btn-toast-close {
+      color: #1E429F;
+      &:hover {
+        background-color: rgba(30, 66, 159, 0.08);
+      }
+    }
+  }
+
+  /* Error state fallback */
+  &.error {
+    background-color: #FDE8E8;
+    border: 1px solid #F98080;
+    color: #9B1C1C;
+
+    .toast-icon-circle {
+      background-color: #9B1C1C;
+      color: #FDE8E8;
+    }
+
+    .btn-toast-close {
+      color: #9B1C1C;
+      &:hover {
+        background-color: rgba(155, 28, 28, 0.08);
+      }
+    }
+  }
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toast-icon-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.toast-message {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.btn-toast-close {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%) translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
