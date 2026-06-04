@@ -1,0 +1,10 @@
+<button
+  class="app-btn"
+  [class.app-btn--secondary]="variant === 'secondary'"
+  [class.app-btn--full]="fullWidth"
+  [attr.type]="type"
+  [disabled]="disabled"
+  (click)="onClick($event)"
+>
+  <ng-content></ng-content>
+</button>

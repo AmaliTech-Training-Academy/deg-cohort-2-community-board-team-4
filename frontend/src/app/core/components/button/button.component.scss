@@ -1,0 +1,45 @@
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--border-radius-input);
+  font-weight: 100;
+  font-size: var(--font-size-button);
+  font-family: var(--font-family-sans);
+  cursor: pointer;
+  transition: var(--transition-normal);
+
+  .plus-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+    font-weight: 500;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--secondary {
+    background-color: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-border);
+
+    &:hover:not(:disabled) {
+      background-color: var(--color-bg-input);
+    }
+  }
+
+  &--full {
+    width: 100%;
+  }
+}

@@ -7,11 +7,14 @@ import { PostService } from '../../../../core/services/post.service';
 import { Post, Category } from '../../../../core/models/post.interface';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ButtonComponent } from '../../../../core/components/button/button.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
+import { HeaderComponent } from '../../../../core/components/header/header.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, ButtonComponent, BreadcrumbComponent, HeaderComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -22,7 +25,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
 
-  currentUser = this.authService.currentUser;
+
+  breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Home', home: true },
+  ];
 
   categories = signal<Category[]>([]);
   posts = signal<Post[]>([]);
@@ -82,7 +88,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return cat ? (cat.name === 'Event' ? 'Events' : cat.name) : 'Select';
   });
 
-  isMobileMenuOpen = signal<boolean>(false);
 
   totalPages = computed(() => Math.ceil(this.totalPosts() / this.limit));
   pagesArray = computed(() => {
@@ -288,14 +293,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isDateDropdownOpen.set(false);
   }
 
-  toggleMobileMenu(): void {
-    this.isMobileMenuOpen.update(v => !v);
-  }
-
-  onLogout(): void {
-    this.authService.logout();
-    this.router.navigate(['/auth/login']);
-  }
 
   openCreateModal(): void {
     this.isCreateModalOpen.set(true);
