@@ -739,6 +739,7 @@
   align-items: center;
   justify-content: center;
   transition: var(--transition-normal);
+  flex-shrink: 0;
 
   &:hover:not(.active) {
     border-color: var(--color-border);
@@ -803,6 +804,19 @@
   .categories-bar {
     margin-bottom: 1.5rem;
     gap: 1rem;
+  }
+
+  .pagination-numbers {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0.25rem 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
