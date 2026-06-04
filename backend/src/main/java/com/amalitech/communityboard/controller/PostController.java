@@ -9,9 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 
@@ -51,19 +53,30 @@ public class PostController {
         return ResponseEntity.ok(postService.getPostByIdOrSlug(identifier));
     }
 
-    @PostMapping
+    @Operation(
+            summary = "Create a post",
+            description = "Creates a post from multipart/form-data. The image part is required."
+    )
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
-            @Valid @RequestBody PostRequest request,
+            @Valid @ModelAttribute PostRequest request,
+            @RequestParam("image") MultipartFile image,
             @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(request, userId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(request, image, userId));
     }
 
-    @PutMapping("/{id}")
+    @Operation(
+            summary = "Update a post",
+            description = "Updates a post from multipart/form-data. The image part is optional; "
+                    + "when omitted the existing image is kept."
+    )
+    @PutMapping(path = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
-            @Valid @RequestBody PostRequest request,
+            @Valid @ModelAttribute PostRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile image,
             @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(postService.updatePost(id, request, userId));
+        return ResponseEntity.ok(postService.updatePost(id, request, image, userId));
     }
 
     @DeleteMapping("/{id}")
