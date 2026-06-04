@@ -43,3 +43,15 @@ variable "backend_port" {
   type        = number
   default     = 8080
 }
+
+variable "log_group_name" {
+  description = "CloudWatch Logs group the containers ship to via the awslogs driver. Empty = use the environment name (so the 'test' env resolves to 'test', matching awslogs-group in docker-compose-staging.yml)."
+  type        = string
+  default     = ""
+}
+
+variable "log_retention_days" {
+  description = "Retention period (in days) for the CloudWatch log group."
+  type        = number
+  default     = 14
+}

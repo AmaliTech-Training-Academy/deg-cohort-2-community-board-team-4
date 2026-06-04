@@ -32,6 +32,11 @@ locals {
   inventory_path   = abspath("${path.module}/../ansible/inventory.ini")
   inventory_tmpl   = abspath("${path.module}/../ansible/inventory.tmpl")
 
+  # Log group the containers ship to via the awslogs driver. Defaults to the
+  # environment name, so the 'test' env => "test" — matching awslogs-group in
+  # docker-compose-staging.yml. Override with var.log_group_name.
+  log_group_name = coalesce(var.log_group_name, var.environment)
+
   tags = {
     Project     = var.project_name
     Environment = var.environment
@@ -139,8 +144,70 @@ resource "aws_instance" "app" {
   vpc_security_group_ids      = [aws_security_group.app.id]
   subnet_id                   = data.aws_subnets.default.ids[0]
   associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.app.name
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-app" })
+}
+
+# --- CloudWatch Logs ----------------------------------------------------------
+# Containers ship their logs here via the Docker `awslogs` driver (see the
+# `logging:` blocks in docker-compose-staging.yml). Terraform owns the group so
+# it has a managed retention; the compose still sets awslogs-create-group=true,
+# which is a harmless no-op once the group exists.
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = local.log_group_name
+  retention_in_days = var.log_retention_days
+  tags              = merge(local.tags, { Name = local.log_group_name })
+}
+
+# --- IAM: let the EC2 host push container logs to CloudWatch ------------------
+# Without this instance profile the awslogs driver can't authenticate and
+# containers fail to start.
+
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "app" {
+  name               = "${local.name_prefix}-ec2"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+  tags               = local.tags
+}
+
+data "aws_iam_policy_document" "cloudwatch_logs" {
+  statement {
+    sid    = "AwslogsDriver"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+    ]
+    resources = [
+      aws_cloudwatch_log_group.app.arn,
+      "${aws_cloudwatch_log_group.app.arn}:*",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "cloudwatch_logs" {
+  name   = "${local.name_prefix}-cw-logs"
+  role   = aws_iam_role.app.id
+  policy = data.aws_iam_policy_document.cloudwatch_logs.json
+}
+
+resource "aws_iam_instance_profile" "app" {
+  name = "${local.name_prefix}-ec2"
+  role = aws_iam_role.app.name
+  tags = local.tags
 }
 
 # --- Ansible inventory (generated from the instance public IP) ----------------

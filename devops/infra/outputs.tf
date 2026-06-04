@@ -32,3 +32,8 @@ output "backend_url" {
   description = "CommunityBoard backend (API) URL."
   value       = "http://${aws_instance.app.public_dns}:${var.backend_port}"
 }
+
+output "log_group_name" {
+  description = "CloudWatch Logs group the containers ship to (set as awslogs-group in the compose file)."
+  value       = aws_cloudwatch_log_group.app.name
+}
