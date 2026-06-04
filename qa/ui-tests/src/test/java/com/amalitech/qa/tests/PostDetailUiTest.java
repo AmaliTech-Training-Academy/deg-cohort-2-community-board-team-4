@@ -4,7 +4,9 @@ import com.amalitech.qa.base.UIBaseTest;
 import com.amalitech.qa.pages.DashboardPage;
 import com.amalitech.qa.pages.LoginPage;
 import com.amalitech.qa.pages.PostDetailPage;
+import com.amalitech.qa.providers.PostDetailDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
+import com.amalitech.qa.utils.JsonDataReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeClass;
@@ -41,7 +43,7 @@ public class PostDetailUiTest extends UIBaseTest {
         setup.isLoaded();
         postDetailUrl = driver.getCurrentUrl();
         if (setup.getCommentCount() == 0) {
-            setup.typeComment("Baseline test comment");
+            setup.typeComment(JsonDataReader.getString("testdata/postdetail-data.json", "baselineComment"));
             setup.submitComment();
         }
     }
@@ -51,6 +53,11 @@ public class PostDetailUiTest extends UIBaseTest {
         driver.get(postDetailUrl);
         postDetailPage = new PostDetailPage();
         postDetailPage.isLoaded();
+        // re-seed a comment if all were deleted during a previous test or retry
+        if (postDetailPage.getCommentCount() == 0) {
+            postDetailPage.typeComment(JsonDataReader.getString("testdata/postdetail-data.json", "baselineComment"));
+            postDetailPage.submitComment();
+        }
     }
 
     // ✅ Post detail page loads with all content visible
@@ -65,10 +72,10 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Breadcrumb shows "Post Details" as the current page
-    @Test
-    public void testBreadcrumbShowsPostDetails() {
+    @Test(dataProvider = "breadcrumbText", dataProviderClass = PostDetailDataProvider.class)
+    public void testBreadcrumbShowsPostDetails(String expectedText) {
         log.info("Verifying breadcrumb shows 'Post Details'");
-        assertEquals(postDetailPage.getBreadcrumbCurrentText(), "Post Details",
+        assertEquals(postDetailPage.getBreadcrumbCurrentText(), expectedText,
                 "Breadcrumb current item should read 'Post Details'");
     }
 
@@ -90,20 +97,20 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Submit button becomes enabled after typing a comment
-    @Test
-    public void testCommentSubmitEnabledWhenFilled() {
+    @Test(dataProvider = "testComment", dataProviderClass = PostDetailDataProvider.class)
+    public void testCommentSubmitEnabledWhenFilled(String comment) {
         log.info("Verifying submit enables after typing a comment");
-        postDetailPage.typeComment("This is a test comment");
+        postDetailPage.typeComment(comment);
         assertFalse(postDetailPage.isCommentSubmitDisabled(),
                 "Submit button should be enabled after typing in the textarea");
     }
 
     // ✅ Submitting a comment increases the comment count and shows the new comment
-    @Test
-    public void testAddComment() {
+    @Test(dataProvider = "addCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
+    public void testAddComment(String commentPrefix) {
         log.info("Testing that submitting a comment adds it to the list");
         int countBefore = postDetailPage.getCommentCount();
-        String commentText = "Automated test comment " + System.currentTimeMillis();
+        String commentText = commentPrefix + System.currentTimeMillis();
         postDetailPage.typeComment(commentText);
         postDetailPage.submitComment();
         assertTrue(postDetailPage.getCommentCount() > countBefore,
@@ -132,10 +139,10 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Editing and saving a comment updates the displayed text
-    @Test
-    public void testEditCommentSave() {
+    @Test(dataProvider = "editCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
+    public void testEditCommentSave(String editPrefix) {
         log.info("Verifying edit and save updates the comment text");
-        String updatedText = "Edited by automation " + System.currentTimeMillis();
+        String updatedText = editPrefix + System.currentTimeMillis();
         postDetailPage.clickEditOnFirstComment();
         postDetailPage.typeInEditTextarea(updatedText);
         postDetailPage.clickSaveEdit();
@@ -167,10 +174,10 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Confirming delete removes the comment from the list (runs last)
-    @Test(priority = 99)
-    public void testDeleteCommentConfirm() {
+    @Test(priority = 99, dataProvider = "deleteCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
+    public void testDeleteCommentConfirm(String commentPrefix) {
         log.info("Verifying confirming delete removes the comment");
-        String tempComment = "Delete me " + System.currentTimeMillis();
+        String tempComment = commentPrefix + System.currentTimeMillis();
         postDetailPage.typeComment(tempComment);
         postDetailPage.submitComment();
         int countAfterAdd = postDetailPage.getCommentCount();

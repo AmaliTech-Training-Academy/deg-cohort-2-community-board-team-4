@@ -3,7 +3,12 @@ package com.amalitech.qa.tests;
 import com.amalitech.qa.base.UIBaseTest;
 import com.amalitech.qa.pages.DashboardPage;
 import com.amalitech.qa.pages.LoginPage;
+import com.amalitech.qa.providers.DashboardDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
+import com.amalitech.qa.utils.DriverManager;
+import com.amalitech.qa.utils.JsonDataReader;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeClass;
@@ -25,6 +30,17 @@ public class DashboardUiTest extends UIBaseTest {
         LoginPage loginPage = new LoginPage();
         loginPage.login(ConfigReader.get("admin.email"), ConfigReader.get("admin.password"));
         loginPage.waitForRedirectToDashboard();
+
+        // Create a seed post so testSearchFiltersResults always has matching data
+        // regardless of what exists on the server
+        driver.get(baseUrl + ConfigReader.get("dashboard.url"));
+        DashboardPage setupPage = new DashboardPage();
+        setupPage.isLoaded();
+        setupPage.openCreatePostModal();
+        String searchKeyword = JsonDataReader.getString("testdata/dashboard-data.json", "searchKeyword");
+        String seedBody = JsonDataReader.getString("testdata/dashboard-data.json", "newPost", "body");
+        setupPage.fillCreatePostForm(searchKeyword + " Seed", seedBody);
+        setupPage.submitCreatePostForm();
     }
 
     @BeforeMethod(alwaysRun = true)
@@ -43,10 +59,10 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Logged-in user name and email are displayed
-    @Test
-    public void testUserDetailsDisplayed() {
+    @Test(dataProvider = "expectedUserName", dataProviderClass = DashboardDataProvider.class)
+    public void testUserDetailsDisplayed(String expectedUserName) {
         log.info("Verifying user details are shown in header");
-        assertEquals(dashboardPage.getUserName(), "Admin User");
+        assertEquals(dashboardPage.getUserName(), expectedUserName);
         assertEquals(dashboardPage.getUserEmail(), ConfigReader.get("admin.email"));
     }
 
@@ -58,41 +74,45 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Search by keyword filters posts
-    @Test
-    public void testSearchFiltersResults() {
+    @Test(dataProvider = "searchKeyword", dataProviderClass = DashboardDataProvider.class)
+    public void testSearchFiltersResults(String keyword) {
         log.info("Testing search filters posts by keyword");
         int allPostsCount = dashboardPage.getPostCount();
-        dashboardPage.searchFor("Hackathon");
+        dashboardPage.searchFor(keyword);
+        // wait for Angular to complete the search API call and render results
+        DriverManager.getWait().until(
+                ExpectedConditions.visibilityOfElementLocated(By.cssSelector("article.post-card"))
+        );
         int filteredCount = dashboardPage.getPostCount();
         assertTrue(filteredCount <= allPostsCount, "Search should filter posts");
-        assertTrue(filteredCount > 0, "Search for 'Hackathon' should return at least one result");
+        assertTrue(filteredCount > 0, "Search for '" + keyword + "' should return at least one result");
     }
 
     // ✅ Search with no results shows empty state
-    @Test
-    public void testSearchNoResults() {
+    @Test(dataProvider = "noResultsSearchKeyword", dataProviderClass = DashboardDataProvider.class)
+    public void testSearchNoResults(String keyword) {
         log.info("Testing search with a term that matches nothing");
-        dashboardPage.searchFor("zzzzzthisdoesnotexist12345");
+        dashboardPage.searchFor(keyword);
         assertTrue(dashboardPage.hasNoPosts(), "Search with no match should return no posts");
     }
 
     // ✅ Category filter — click 'news' shows only news posts
-    @Test
-    public void testCategoryFilterNews() {
+    @Test(dataProvider = "newsCategoryFilter", dataProviderClass = DashboardDataProvider.class)
+    public void testCategoryFilterNews(String category) {
         log.info("Testing category filter for 'news'");
-        dashboardPage.clickCategoryPill("news");
-        assertEquals(dashboardPage.getActiveCategoryPillText(), "news",
+        dashboardPage.clickCategoryPill(category);
+        assertEquals(dashboardPage.getActiveCategoryPillText(), category,
                 "News pill should be active after clicking");
         assertTrue(dashboardPage.getPostCount() > 0, "News category should have posts");
     }
 
     // ✅ 'All' category shows all posts
-    @Test
-    public void testCategoryFilterAll() {
+    @Test(dataProvider = "allCategoryFilter", dataProviderClass = DashboardDataProvider.class)
+    public void testCategoryFilterAll(String newsCategory, String allCategory) {
         log.info("Testing 'All' category shows all posts");
-        dashboardPage.clickCategoryPill("news");
-        dashboardPage.clickCategoryPill("All");
-        assertEquals(dashboardPage.getActiveCategoryPillText(), "All",
+        dashboardPage.clickCategoryPill(newsCategory);
+        dashboardPage.clickCategoryPill(allCategory);
+        assertEquals(dashboardPage.getActiveCategoryPillText(), allCategory,
                 "'All' pill should be active");
     }
 
@@ -114,14 +134,14 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Create a post successfully
-    @Test
-    public void testCreatePostSuccess() {
+    @Test(dataProvider = "newPostData", dataProviderClass = DashboardDataProvider.class)
+    public void testCreatePostSuccess(String titlePrefix, String body) {
         log.info("Testing creating a new post");
         int countBefore = dashboardPage.getPostCount();
         dashboardPage.openCreatePostModal();
         dashboardPage.fillCreatePostForm(
-                "UI Test Post " + System.currentTimeMillis(),
-                "This post was created by the Selenium UI test suite."
+                titlePrefix + System.currentTimeMillis(),
+                body
         );
         dashboardPage.submitCreatePostForm();
         dashboardPage = new DashboardPage();
@@ -130,13 +150,13 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Pagination — next page advances the page number
-    @Test
-    public void testPaginationNextPage() {
+    @Test(dataProvider = "paginationData", dataProviderClass = DashboardDataProvider.class)
+    public void testPaginationNextPage(String initialPage, String nextPage) {
         log.info("Testing pagination next page");
-        assertEquals(dashboardPage.getActivePageNumber(), "1", "Should start on page 1");
+        assertEquals(dashboardPage.getActivePageNumber(), initialPage, "Should start on page 1");
         assertFalse(dashboardPage.isNextPageButtonDisabled(), "Next button should be enabled");
         dashboardPage.clickNextPage();
-        assertEquals(dashboardPage.getActivePageNumber(), "2", "Should advance to page 2");
+        assertEquals(dashboardPage.getActivePageNumber(), nextPage, "Should advance to page 2");
     }
 
     // ✅ First page has Previous button disabled

@@ -1,0 +1,14 @@
+{
+  "pageTitle": "CommunityBoardUi",
+  "invalidEmailTest": {
+    "email": "not-an-email",
+    "password": "password123"
+  },
+  "emptyEmailTest": {
+    "password": "password123"
+  },
+  "wrongCredentialsTest": {
+    "email": "wrong@example.com",
+    "password": "wrongpassword"
+  }
+}

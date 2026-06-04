@@ -187,6 +187,9 @@ public class DashboardPage {
 
     public void submitCreatePostForm() {
         helper.click(modalSubmitButton);
+        DriverManager.getWait().until(
+                ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("div.modal-overlay"))
+        );
     }
 
     public void cancelCreatePostModal() {

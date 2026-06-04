@@ -2,6 +2,7 @@ package com.amalitech.qa.tests;
 
 import com.amalitech.qa.base.UIBaseTest;
 import com.amalitech.qa.pages.LoginPage;
+import com.amalitech.qa.providers.LoginDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,11 +25,11 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Login page loads with correct heading
-    @Test
-    public void testLoginPageLoads() {
+    @Test(dataProvider = "loginPageTitle", dataProviderClass = LoginDataProvider.class)
+    public void testLoginPageLoads(String expectedTitle) {
         log.info("Verifying login page loads correctly");
         assertTrue(loginPage.isLoaded(), "Login page heading should be visible");
-        assertEquals(driver.getTitle(), "CommunityBoardUi");
+        assertEquals(driver.getTitle(), expectedTitle);
     }
 
     // ✅ Successful login redirects to dashboard
@@ -45,21 +46,21 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Invalid email format shows email error
-    @Test
-    public void testInvalidEmailShowsError() {
+    @Test(dataProvider = "invalidEmailLogin", dataProviderClass = LoginDataProvider.class)
+    public void testInvalidEmailShowsError(String email, String password) {
         log.info("Testing login with invalid email format");
-        loginPage.enterEmail("not-an-email");
-        loginPage.enterPassword("password123");
+        loginPage.enterEmail(email);
+        loginPage.enterPassword(password);
         loginPage.clickSubmit();
         String error = loginPage.getEmailError();
         assertFalse(error.isEmpty(), "Email error message should be visible");
     }
 
     // ✅ Empty email shows email required error
-    @Test
-    public void testEmptyEmailShowsError() {
+    @Test(dataProvider = "emptyEmailLogin", dataProviderClass = LoginDataProvider.class)
+    public void testEmptyEmailShowsError(String password) {
         log.info("Testing login with empty email");
-        loginPage.enterPassword("password123");
+        loginPage.enterPassword(password);
         loginPage.clickSubmit();
         String error = loginPage.getEmailError();
         assertFalse(error.isEmpty(), "Email error message should be visible for empty email");
@@ -76,10 +77,10 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Wrong credentials — stays on login page
-    @Test
-    public void testWrongCredentialsStaysOnLoginPage() {
+    @Test(dataProvider = "wrongCredentialsLogin", dataProviderClass = LoginDataProvider.class)
+    public void testWrongCredentialsStaysOnLoginPage(String email, String password) {
         log.info("Testing login with wrong credentials");
-        loginPage.login("wrong@example.com", "wrongpassword");
+        loginPage.login(email, password);
         assertFalse(driver.getCurrentUrl().contains("/dashboard"),
                 "Should not redirect to dashboard with wrong credentials");
     }

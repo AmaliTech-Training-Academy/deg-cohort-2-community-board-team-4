@@ -1,0 +1,8 @@
+{
+  "breadcrumbText": "Post Details",
+  "baselineComment": "Baseline test comment",
+  "testComment": "This is a test comment",
+  "addCommentPrefix": "Automated test comment ",
+  "editCommentPrefix": "Edited by automation ",
+  "deleteCommentPrefix": "Delete me "
+}

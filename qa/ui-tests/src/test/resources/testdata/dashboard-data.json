@@ -1,0 +1,15 @@
+{
+  "expectedUserName": "Admin User",
+  "searchKeyword": "UI Test Post",
+  "noResultsSearchKeyword": "zzzzzthisdoesnotexist12345",
+  "newsCategory": "news",
+  "allCategory": "All",
+  "newPost": {
+    "titlePrefix": "UI Test Post ",
+    "body": "This post was created by the Selenium UI test suite."
+  },
+  "pagination": {
+    "initialPage": "1",
+    "nextPage": "2"
+  }
+}
