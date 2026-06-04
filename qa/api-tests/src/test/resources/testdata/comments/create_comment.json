@@ -1,0 +1,21 @@
+{
+  "valid_1": {
+    "content": "This is a test comment on post one"
+  },
+  "valid_2": {
+    "content": "This is a test comment on post two"
+  },
+  "empty_content": {
+    "content": ""
+  },
+  "whitespace_content": {
+    "content": "     "
+  },
+  "missing_content": {},
+  "xss_content": {
+    "content": "<script>alert(1)</script>"
+  },
+  "sql_injection_content": {
+    "content": "'; DROP TABLE comments;--"
+  }
+}

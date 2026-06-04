@@ -1,0 +1,21 @@
+---
+# Server preparation only: install Docker Engine and Docker Compose V2.
+- name: Install Docker Engine and Docker Compose V2
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    # Amazon Linux 2 ships Python 3.7; ansible-core needs >= 3.8.
+    ansible_python_interpreter: /usr/bin/python3.8
+  pre_tasks:
+    # raw runs over plain SSH (no Python needed) so we can install the
+    # interpreter Ansible requires before any module runs.
+    - name: Ensure Python 3.8 is installed
+      ansible.builtin.raw: |
+        if ! command -v python3.8 >/dev/null 2>&1; then
+          sudo amazon-linux-extras enable python3.8 >/dev/null 2>&1 || true
+          sudo yum -y install python38
+        fi
+      changed_when: false
+  roles:
+    - docker

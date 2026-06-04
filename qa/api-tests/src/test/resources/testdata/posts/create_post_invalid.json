@@ -1,0 +1,60 @@
+{
+  "missing_title": {
+    "content": "Content without title",
+    "categoryId": 1
+  },
+  "missing_content": {
+    "title": "Title without content",
+    "categoryId": 1
+  },
+  "missing_category": {
+    "title": "Title without category",
+    "content": "Content without category"
+  },
+  "empty_title": {
+    "title": "",
+    "content": "Content with empty title",
+    "categoryId": 1
+  },
+  "empty_content": {
+    "title": "Title with empty content",
+    "content": "",
+    "categoryId": 1
+  },
+  "whitespace_title": {
+    "title": "     ",
+    "content": "Content with whitespace title",
+    "categoryId": 1
+  },
+  "whitespace_content": {
+    "title": "Title with whitespace content",
+    "content": "     ",
+    "categoryId": 1
+  },
+  "invalid_category_id": {
+    "title": "Valid title",
+    "content": "Valid content",
+    "categoryId": 99999
+  },
+  "negative_category_id": {
+    "title": "Valid title",
+    "content": "Valid content",
+    "categoryId": -1
+  },
+  "xss_title": {
+    "title": "<script>alert(1)</script>",
+    "content": "Valid content",
+    "categoryId": 1
+  },
+  "xss_content": {
+    "title": "Valid title",
+    "content": "<script>alert(1)</script>",
+    "categoryId": 1
+  },
+  "sql_injection_title": {
+    "title": "'; DROP TABLE posts;--",
+    "content": "Valid content",
+    "categoryId": 1
+  },
+  "empty_body": {}
+}

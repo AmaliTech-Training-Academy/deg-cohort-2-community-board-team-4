@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      # Dummy test values — not for production.
+      POSTGRES_DB: ${POSTGRES_DB:-communityboard_test}
+      POSTGRES_USER: ${POSTGRES_USER:-test_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-west-1}
+        awslogs-group: test
+        awslogs-stream: postgres
+        awslogs-create-group: "true"   
+
+  backend:
+    image: ${REGISTRY}/communityboard-backend:test-latest
+    ports:
+      - "8080:8080"
+    environment:
+      # Dummy test environment.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-communityboard_test}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-test_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      JWT_SECRET: ${JWT_SECRET:-dummy-test-secret-not-for-production}
+    # Backend binds :8080 only after the Spring context (incl. Flyway) is ready,
+    # so a 200 here means the schema exists. /api-docs is permitAll, no auth.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-west-1}
+        awslogs-group: test
+        awslogs-stream: backend
+        awslogs-create-group: "true"
+
+  frontend:
+    image: ${REGISTRY}/communityboard-frontend:test-latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-west-1}
+        awslogs-group: test
+        awslogs-stream: frontend
+        awslogs-create-group: "true"
+
+  data-engineering:
+    image: ${REGISTRY}/communityboard-data-engineering:test-latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-communityboard_test}
+      DB_USER: ${POSTGRES_USER:-test_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      APP_ENV: staging
+      RUN_SEED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-west-1}
+        awslogs-group: test
+        awslogs-stream: data-engineering
+        awslogs-create-group: "true"
+
+volumes:
+  pgdata:

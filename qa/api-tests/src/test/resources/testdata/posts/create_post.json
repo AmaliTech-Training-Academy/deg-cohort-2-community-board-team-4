@@ -1,0 +1,22 @@
+{
+  "category_1": {
+    "title": "Test General Post",
+    "content": "This is a general test post content",
+    "categoryId": 1
+  },
+  "category_2": {
+    "title": "Test Events Post",
+    "content": "This is an events test post content",
+    "categoryId": 2
+  },
+  "category_3": {
+    "title": "Test Tech Post",
+    "content": "This is a tech test post content",
+    "categoryId": 3
+  },
+  "category_4": {
+    "title": "Test Help Post",
+    "content": "This is a help test post content",
+    "categoryId": 4
+  }
+}

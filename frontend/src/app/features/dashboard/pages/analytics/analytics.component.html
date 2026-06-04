@@ -1,0 +1,118 @@
+<div class="analytics-container">
+  <app-header />
+
+  <main class="main-content">
+    <!-- Breadcrumb -->
+    <app-breadcrumb [items]="breadcrumbItems" />
+
+    @if (isLoading()) {
+      <div class="loader-container">
+        <div class="spinner"></div>
+        <p>Loading analytics data...</p>
+      </div>
+    } @else if (errorMessage()) {
+      <div class="error-banner">
+        <p>{{ errorMessage() }}</p>
+      </div>
+    } @else {
+      <!-- Stat Cards -->
+      <section class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Total Posts</span>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 17l6-6 4 4 8-8"></path>
+                <path d="M17 7h4v4"></path>
+              </svg>
+            </div>
+          </div>
+          <span class="stat-value">{{ totalPosts() }}</span>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Total Comments</span>
+            <div class="stat-icon">
+              <img src="assets/icons/message-circle.svg" alt="Comments Icon">
+            </div>
+          </div>
+          <span class="stat-value">{{ totalComments() }}</span>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Active Users</span>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+          </div>
+          <span class="stat-value">{{ totalUsers() }}</span>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-row">
+        <div class="chart-card">
+          <h2 class="chart-title">Posts by Category</h2>
+          <div class="chart-canvas-wrapper">
+            @if (categoryData()) {
+              <canvas
+                baseChart
+                type="bar"
+                [data]="categoryData()!"
+                [options]="categoryOptions"
+                [plugins]="[avgLinePlugin]"
+              ></canvas>
+            }
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h2 class="chart-title">Posts Day of Week</h2>
+          <div class="chart-canvas-wrapper">
+            @if (weekdayData()) {
+              <canvas
+                baseChart
+                type="line"
+                [data]="weekdayData()!"
+                [options]="weekdayOptions"
+                [plugins]="[avgLinePlugin]"
+              ></canvas>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Top Contributors -->
+      <section class="contributors-section">
+        <h2 class="section-title">Top 10 Contributors</h2>
+        <div class="table-wrapper">
+          <table class="contributors-table">
+            <thead>
+              <tr>
+                <th class="col-rank">Ranks</th>
+                <th class="col-name">Name</th>
+                <th class="col-posts">Posts</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of contributors(); track c.rank) {
+                <tr>
+                  <td class="col-rank">{{ c.rank }}</td>
+                  <td class="col-name">{{ c.name }}</td>
+                  <td class="col-posts">{{ c.posts }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  </main>
+</div>

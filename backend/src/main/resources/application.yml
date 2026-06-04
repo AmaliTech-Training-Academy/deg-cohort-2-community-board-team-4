@@ -7,19 +7,21 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: update
-    defer-datasource-initialization: true
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
   sql:
     init:
-      mode: always
+      mode: never
 
 jwt:
   secret: ${JWT_SECRET:communityboard-secret-key-amalitech-2024}
-  expiration: 86400000
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:86400}    # seconds (1 day)
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800} # seconds (7 days)
 
 server:
   port: 8080

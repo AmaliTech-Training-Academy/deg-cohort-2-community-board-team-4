@@ -11,3 +11,43 @@ build/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Python environments & packages
+.venv/
+.env.local
+*.egg-info/
+communityboard_etl.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+*.swp
+*.swo
+*~
+
+infra/.terraform/
+.env
+ansible/inventory.ini
+ansible/*.pem
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+ansible/vault.yml
+
+# Private keys / secrets (repo-wide — never commit SSH/TLS keys)
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+inventory.ini

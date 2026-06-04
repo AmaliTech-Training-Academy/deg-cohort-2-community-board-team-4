@@ -1,0 +1,18 @@
+{
+  "valid_1": {
+    "email": "admin@amalitech.com",
+    "password": "password123"
+  },
+  "valid_2": {
+    "email": "user@amalitech.com",
+    "password": "password123"
+  },
+  "invalid_1": {
+    "email": "admin@amalitech.com",
+    "password": "wrongpassword"
+  },
+  "invalid_2": {
+    "email": "user@amalitech.com",
+    "password": "wrongpassword"
+  }
+}

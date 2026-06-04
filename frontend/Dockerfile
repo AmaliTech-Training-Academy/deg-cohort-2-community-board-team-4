@@ -1,32 +1,34 @@
 # syntax=docker/dockerfile:1
 
+
 # ---------- Stage 1: build ----------
 FROM node:18-alpine AS build
 WORKDIR /app
 
-# Dependencies first — cached unless package files change.
-# Uses npm ci when a lockfile is present (reproducible), else falls back to npm install.
+# Backend API URL, baked in at build time (per environment). Defaults to
+# localhost for local/QA builds; CI passes --build-arg API_URL=<env secret>.
+ARG API_URL=http://localhost:8080/api
+
 COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Then the source, then build the static bundle.
 COPY . .
+# Inject the API URL into the prod environment file (replaces __API_URL__),
+# then build. Angular uses 'ng build' (prod config) via the package.json script.
+RUN sed -i "s|__API_URL__|${API_URL}|g" src/environments/environment.prod.ts
 RUN npm run build
 
 # ---------- Stage 2: runtime ----------
-# Serve the static build with a tiny static-file server (no nginx).
 FROM node:18-alpine
 WORKDIR /app
 
-# Install the static server globally (as root), then drop to the non-root user to run.
 RUN npm install -g serve@14
 
-# Only the built assets are needed at runtime.
-COPY --from=build /app/build ./build
+# FIX FOR ANGULAR: 
+# Copy from dist/community-board-ui/browser into the runtime folder
+COPY --from=build /app/dist/community-board-ui/browser ./build
 
-# 'node' is a built-in non-root user (uid 1000) in the official Node image.
 USER node
 EXPOSE 3000
 
-# -s = single-page-app mode (always serve index.html for client-side routes).
 CMD ["serve", "-s", "build", "-l", "3000"]
