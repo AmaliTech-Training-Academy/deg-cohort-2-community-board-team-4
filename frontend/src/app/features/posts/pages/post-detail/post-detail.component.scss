@@ -106,6 +106,7 @@
   gap: 1.25rem;
   text-align: left;
   padding: 1rem 0;
+  min-width: 0;
 }
 
 .detail-header {
@@ -169,8 +170,11 @@
   line-height: 1.65;
   color: #395362;
   margin: 0;
+  // Allow the flex item to shrink and wrap instead of forcing one long line.
+  min-width: 0;
+  overflow-wrap: break-word;
   // Preserve line breaks for legacy plain-text posts; harmless for rich HTML content.
-  white-space: pre-wrap;
+  white-space: pre-line;
 
   p {
     margin: 0 0 1rem;
