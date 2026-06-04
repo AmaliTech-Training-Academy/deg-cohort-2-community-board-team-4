@@ -91,8 +91,17 @@ export class PostService {
     return this.http.delete<void>(`${environment.apiUrl}/comments/${commentId}`);
   }
 
-  createPost(title: string, content: string, categoryId: number): Observable<Post> {
-    return this.http.post<any>(this.API_URL, { title, content, categoryId }).pipe(
+  createPost(title: string, content: string, categoryId: number, image?: File): Observable<Post> {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('categoryId', categoryId.toString());
+    if (image) {
+      formData.append('image', image);
+    }
+
+    // Let the browser set the multipart Content-Type (with boundary); do not set it manually.
+    return this.http.post<any>(this.API_URL, formData).pipe(
       map(res => this.mapPostResponse(res))
     );
   }
@@ -106,8 +115,9 @@ export class PostService {
       title: res.title,
       slug: res.slug,
       content: res.content,
+      imageUrl: res.imageUrl,
       categoryId: res.categoryId,
-      authorId: 0, 
+      authorId: 0,
       createdAt: res.createdAt,
       updatedAt: res.updatedAt,
       category: {

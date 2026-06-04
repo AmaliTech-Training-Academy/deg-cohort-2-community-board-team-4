@@ -17,6 +17,10 @@ spring:
   sql:
     init:
       mode: never
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 jwt:
   secret: ${JWT_SECRET:communityboard-secret-key-amalitech-2024}
@@ -25,6 +29,13 @@ jwt:
 
 server:
   port: 8080
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  upload-folder: ${CLOUDINARY_UPLOAD_FOLDER:community-board/posts}
+  placeholder-url: ${CLOUDINARY_PLACEHOLDER_URL:https://res.cloudinary.com/demo/image/upload/v1/community-board/placeholder.png}
 
 springdoc:
   api-docs:
