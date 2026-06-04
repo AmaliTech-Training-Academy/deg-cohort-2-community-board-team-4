@@ -422,7 +422,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.clearImage();
         this.selectedCategoryIdForPost.set(null);
         this.notificationService.show('Ping! Your Post is Live🚀');
-        
         this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { category: null, keyword: null, dateOption: null, from: null, to: null, page: 1 }
