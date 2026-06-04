@@ -28,7 +28,14 @@ export class PostService {
     );
   }
 
-  getPosts(page: number, limit: number, categoryId?: number, search?: string): Observable<{ posts: Post[], total: number }> {
+  getPosts(
+    page: number, 
+    limit: number, 
+    categoryId?: number, 
+    search?: string,
+    fromDate?: string,
+    toDate?: string
+  ): Observable<{ posts: Post[], total: number }> {
     let params = new HttpParams()
       .set('page', (page - 1).toString()) // Spring Pageable is 0-indexed
       .set('size', limit.toString());
@@ -43,6 +50,14 @@ export class PostService {
       if (category) {
         params = params.set('category', category.name);
       }
+    }
+
+    if (fromDate) {
+      params = params.set('from', fromDate);
+    }
+
+    if (toDate) {
+      params = params.set('to', toDate);
     }
 
     return this.http.get<any>(this.API_URL, { params }).pipe(
