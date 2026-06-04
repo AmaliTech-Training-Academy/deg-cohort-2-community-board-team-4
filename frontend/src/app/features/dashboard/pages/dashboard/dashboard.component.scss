@@ -382,12 +382,20 @@
   width: 100%;
 }
 
-/* Categories selection filter bar */
+/* Filters Container Layout */
+.filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
 .categories-bar {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  margin-bottom: 2rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
   -webkit-overflow-scrolling: touch;
@@ -407,6 +415,98 @@
 .categories-pills {
   display: flex;
   gap: 0.75rem;
+}
+
+/* Date filter container & custom select overrides */
+.date-filter-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.date-select {
+  position: relative;
+  min-width: 170px;
+
+  .custom-select-trigger {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    height: 36px;
+    background-color: var(--color-white, #ffffff);
+    border: 1px solid #395362;
+    color: #395362;
+    border-radius: 8px;
+
+    .filter-trigger-content {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    &:hover {
+      background-color: #B2BCC2;
+    }
+
+    &.open {
+      background-color: #B2BCC2;
+    }
+  }
+
+  .custom-select-dropdown {
+    top: calc(100% + 4px);
+    width: 200px;
+    right: 0;
+    left: auto;
+    border: 1px solid #395362;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(15, 34, 51, 0.08);
+  }
+
+  .custom-select-option {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+
+    &:hover {
+      background-color: #f1f5f9;
+    }
+
+    &.selected {
+      background-color: #e2e8f0;
+      color: var(--color-primary);
+    }
+  }
+}
+
+.custom-date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-picker-input {
+  border: 1px solid #395362;
+  background-color: var(--color-white, #ffffff);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #395362;
+  height: 36px;
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.2s ease;
+
+  &:focus {
+    border-color: #cbd5e1;
+    background-color: var(--color-white, #ffffff);
+  }
+}
+
+.date-range-separator {
+  font-size: 0.85rem;
+  color: var(--color-secondary);
+  font-weight: 500;
 }
 
 .pill-button {
@@ -801,9 +901,33 @@
     font-size: 0.85rem;
   }
 
-  .categories-bar {
-    margin-bottom: 1.5rem;
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
     gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .categories-bar {
+    margin-bottom: 0;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .date-filter-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .custom-date-inputs {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-picker-input {
+    flex: 1;
+    width: 100%;
   }
 
   .pagination-numbers {
