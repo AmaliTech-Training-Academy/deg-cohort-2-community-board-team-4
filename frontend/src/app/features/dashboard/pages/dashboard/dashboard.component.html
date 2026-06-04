@@ -1,4 +1,4 @@
-<div class="dashboard-container">
+<div class="dashboard-container" (click)="closeAllDropdowns()">
   <!-- Header -->
   <header class="app-header">
     <div class="header-content">
@@ -102,25 +102,99 @@
       </button>
     </div>
 
-    <!-- Categories Filter Bar -->
-    <section class="categories-bar">
-      <span class="categories-label">Categories:</span>
-      <div class="categories-pills">
-        <button 
-          class="pill-button" 
-          [class.active]="selectedCategoryId() === undefined" 
-          (click)="onSelectCategory(undefined)"
-        >
-          All
-        </button>
-        @for (category of categories(); track category.id) {
+    <!-- Filters Container (Categories + Date Filter) -->
+    <section class="filters-container" (click)="$event.stopPropagation()">
+      <div class="categories-bar">
+        <span class="categories-label">Categories:</span>
+        <div class="categories-pills">
           <button 
             class="pill-button" 
-            [class.active]="selectedCategoryId() === category.id" 
-            (click)="onSelectCategory(category.id)"
+            [class.active]="selectedCategoryId() === undefined" 
+            (click)="onSelectCategory(undefined)"
           >
-            {{ category.name }}
+            All
           </button>
+          @for (category of categories(); track category.id) {
+            <button 
+              class="pill-button" 
+              [class.active]="selectedCategoryId() === category.id" 
+              (click)="onSelectCategory(category.id)"
+            >
+              {{ category.name }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Date Filter Dropdown & Custom Range Picker -->
+      <div class="date-filter-wrapper">
+        <div class="custom-select-container date-select">
+          <button 
+            type="button" 
+            class="custom-select-trigger" 
+            [class.open]="isDateDropdownOpen()"
+            (click)="toggleDateDropdown($event)"
+          >
+            <span class="filter-trigger-content">
+              <svg class="calendar-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              {{ selectedDateOptionName() }}
+            </span>
+            <span class="chevron-icon">
+              @if (isDateDropdownOpen()) {
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              }
+            </span>
+          </button>
+          
+          @if (isDateDropdownOpen()) {
+            <div class="custom-select-dropdown" (click)="$event.stopPropagation()">
+              @for (opt of dateOptions; track opt.value) {
+                <button 
+                  type="button"
+                  class="custom-select-option" 
+                  [class.selected]="selectedDateOption() === opt.value"
+                  (click)="selectDateOption(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        @if (selectedDateOption() === 'custom') {
+          <div class="custom-date-inputs">
+            <div class="date-input-group">
+              <label for="customFromDate" class="sr-only">From</label>
+              <input 
+                id="customFromDate"
+                type="date" 
+                class="date-picker-input"
+                [value]="customFromDate()"
+                (change)="onCustomFromDateChange(fromDateInput.value)"
+                #fromDateInput
+              >
+            </div>
+            <span class="date-range-separator">to</span>
+            <div class="date-input-group">
+              <label for="customToDate" class="sr-only">To</label>
+              <input 
+                id="customToDate"
+                type="date" 
+                class="date-picker-input"
+                [value]="customToDate()"
+                (change)="onCustomToDateChange(toDateInput.value)"
+                #toDateInput
+              >
+            </div>
+          </div>
         }
       </div>
     </section>
