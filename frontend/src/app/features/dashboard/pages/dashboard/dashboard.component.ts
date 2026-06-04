@@ -1,15 +1,23 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { QuillEditorComponent } from 'ngx-quill';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PostService } from '../../../../core/services/post.service';
 import { Post, Category } from '../../../../core/models/post.interface';
 
+/** Treats HTML whose visible text is empty (e.g. Quill's "<p><br></p>") as required-failing. */
+function htmlNotBlankValidator(control: AbstractControl): ValidationErrors | null {
+  const value = (control.value as string | null) ?? '';
+  const text = value.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  return text.length > 0 ? null : { required: true };
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, QuillEditorComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -38,7 +46,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   postForm: FormGroup = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(255)]],
     categoryId: ['', Validators.required],
-    content: ['', Validators.required],
+    content: ['', htmlNotBlankValidator],
     image: [null as File | null, Validators.required]
   });
 
