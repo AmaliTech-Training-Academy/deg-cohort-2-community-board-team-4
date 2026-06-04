@@ -7,10 +7,12 @@
 
     <!-- Desktop Header Actions -->
     <div class="header-actions desktop-only">
-      <a class="nav-link-analytics" routerLink="/dashboard/analytics" routerLinkActive="active">
-        <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
-        Analytics
-      </a>
+      @if (currentUser()?.role === 'ADMIN') {
+        <a class="nav-link-analytics" routerLink="/dashboard/analytics" routerLinkActive="active">
+          <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+          Analytics
+        </a>
+      }
 
       <!-- User Profile Card -->
       <div class="user-profile-card">
@@ -56,10 +58,12 @@
       </div>
 
       <nav class="drawer-nav">
-        <a class="drawer-nav-item" routerLink="/dashboard/analytics">
-          <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
-          Analytics
-        </a>
+        @if (currentUser()?.role === 'ADMIN') {
+          <a class="drawer-nav-item" routerLink="/dashboard/analytics">
+            <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+            Analytics
+          </a>
+        }
         <button class="btn-drawer-logout" (click)="onLogout(); toggleMobileMenu()">
           <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
           Log out
