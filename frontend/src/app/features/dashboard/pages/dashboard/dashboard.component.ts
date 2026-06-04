@@ -271,6 +271,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Strips HTML tags so the list card shows a clean plain-text preview of rich content. */
+  getPlainExcerpt(html: string): string {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return (tmp.textContent || '').trim();
+  }
+
   getRelativeTime(dateStr: string): string {
     this.ticker();
 
