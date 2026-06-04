@@ -36,6 +36,14 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-test_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
       JWT_SECRET: ${JWT_SECRET:-dummy-test-secret-not-for-production}
+    # Backend binds :8080 only after the Spring context (incl. Flyway) is ready,
+    # so a 200 here means the schema exists. /api-docs is permitAll, no auth.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,14 +72,17 @@ services:
   data-engineering:
     image: ${REGISTRY}/communityboard-data-engineering:test-latest
     environment:
-      
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: ${POSTGRES_DB:-communityboard_test}
       DB_USER: ${POSTGRES_USER:-test_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      APP_ENV: staging
+      RUN_SEED: "true"
     depends_on:
       postgres:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     logging:
       driver: awslogs

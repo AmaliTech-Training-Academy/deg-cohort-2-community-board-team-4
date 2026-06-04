@@ -25,6 +25,14 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: communityboard-secret-key-amalitech-2024
+    # Backend binds :8080 only after the Spring context (incl. Flyway) is ready,
+    # so a 200 here means the schema exists. /api-docs is permitAll, no auth.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,8 +52,12 @@ services:
       DB_NAME: communityboard
       DB_USER: postgres
       DB_PASSWORD: postgres
+      APP_ENV: local
+      RUN_SEED: "true"
     depends_on:
       postgres:
+        condition: service_healthy
+      backend:
         condition: service_healthy
 
 volumes:
