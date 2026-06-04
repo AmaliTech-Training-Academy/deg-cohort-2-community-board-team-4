@@ -3,6 +3,7 @@ package com.amalitech.qa.tests;
 import com.amalitech.qa.base.BaseTest;
 import com.amalitech.qa.dataProviders.SearchFilterDataProvider;
 import io.restassured.http.ContentType;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -13,6 +14,8 @@ public class SearchFilterApiTest extends BaseTest {
 
     private String keyword1;
     private String keyword2;
+    private int postId1;
+    private int postId2;
 
     @BeforeClass(alwaysRun = true)
     public void createPostsForSearch() {
@@ -20,25 +23,47 @@ public class SearchFilterApiTest extends BaseTest {
 
         // create post 1 and store unique keyword
         keyword1 = "SearchKeyword_" + timestamp + "_1";
-        given()
+        postId1 = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + adminToken)
                 .body("{\"title\": \"" + keyword1 + "\", \"content\": \"Test content for search\", \"categoryId\": 1}")
                 .when()
                 .post("/posts")
                 .then()
-                .statusCode(201);
+                .statusCode(201).extract().path("id");
 
         // create post 2 and store unique keyword
         keyword2 = "SearchKeyword_" + timestamp + "_2";
-        given()
+        postId2  = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + adminToken)
                 .body("{\"title\": \"" + keyword2 + "\", \"content\": \"Another content for search\", \"categoryId\": 2}")
                 .when()
                 .post("/posts")
                 .then()
-                .statusCode(201);
+                .statusCode(201).extract().path("id");
+    }
+
+    @AfterClass(alwaysRun = true)
+    public void deletePostsForSearch() {
+        // delete post 1
+        given()
+                .header("Authorization", "Bearer " + adminToken)
+                .when()
+                .delete("/posts/" + postId1)
+                .then()
+                .log().ifValidationFails()
+                .statusCode(204);
+
+        // delete post 2
+        given()
+                .header("Authorization", "Bearer " + adminToken)
+                .when()
+                .delete("/posts/" + postId2)
+                .then()
+                .log().ifValidationFails()
+                .statusCode(204);
+        System.out.println("This is the end");
     }
 
 
@@ -50,7 +75,7 @@ public class SearchFilterApiTest extends BaseTest {
                 .when()
                 .get("/posts")
                 .then()
-                .log().all()   // ← change this
+                .log().ifValidationFails()
                 .statusCode(200)
                 .body("content", not(empty()))
                 .body("totalElements", greaterThan(0))
@@ -66,10 +91,10 @@ public class SearchFilterApiTest extends BaseTest {
                 .when()
                 .get("/posts")
                 .then()
-                .log().ifValidationFails()
+                .log().all()
                 .statusCode(200)
                 .body("content", not(empty()))
-                .body("content[0].categoryName", equalToIgnoringCase(category));
+                .body("content.categoryName", everyItem(equalToIgnoringCase(category)));
     }
 
     // ✅ Filter by category — case insensitive (runs 3 times)
@@ -95,7 +120,7 @@ public class SearchFilterApiTest extends BaseTest {
                 .when()
                 .get("/posts")
                 .then()
-                .log().ifValidationFails()
+                .log().all()
                 .statusCode(200)
                 .body("content", empty())
                 .body("totalElements", equalTo(0))
