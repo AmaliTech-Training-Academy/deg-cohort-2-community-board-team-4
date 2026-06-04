@@ -373,6 +373,11 @@
   box-sizing: border-box;
 }
 
+app-breadcrumb {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
 .actions-bar {
   display: flex;
   justify-content: space-between;
