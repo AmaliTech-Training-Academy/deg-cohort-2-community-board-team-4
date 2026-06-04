@@ -40,7 +40,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   deleteError = signal<string>('');
 
   commentForm: FormGroup = this.fb.group({
-    content: ['', [Validators.required, Validators.maxLength(1000)]]
+    content: ['', [Validators.required, Validators.maxLength(1000), Validators.pattern(/\S/)]]
   });
 
   ngOnInit(): void {
