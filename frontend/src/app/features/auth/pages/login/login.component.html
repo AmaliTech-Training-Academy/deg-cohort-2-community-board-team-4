@@ -33,7 +33,7 @@
           <img src="assets/icons/lock.svg" alt="Lock Icon" class="input-icon">
           <input [type]="passwordVisible ? 'text' : 'password'" id="password" formControlName="password" placeholder="Enter password" [readonly]="isLoading">
           <button type="button" class="toggle-password" (click)="togglePasswordVisibility()" [disabled]="isLoading">
-            <img src="assets/icons/eye-off.svg" alt="Toggle View" class="eye-icon">
+            <img [src]="passwordVisible ? 'assets/icons/eye.svg' : 'assets/icons/eye-off.svg'" alt="Toggle View" class="eye-icon">
           </button>
         </div>
         @if (shouldShowBlurError('password', 'required')) {

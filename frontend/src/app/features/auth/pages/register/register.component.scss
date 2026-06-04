@@ -148,15 +148,17 @@
         display: flex;
         align-items: center;
 
+        &:hover {
+            .eye-icon {
+                opacity: 0.9;
+            }
+        }
+
         .eye-icon {
             width: 16px;
             height: 16px;
             opacity: 0.6;
             transition: var(--transition-hover);
-
-            &:hover {
-                opacity: 0.9;
-            }
         }
     }
 }
