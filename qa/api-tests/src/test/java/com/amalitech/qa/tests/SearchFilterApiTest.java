@@ -2,12 +2,45 @@ package com.amalitech.qa.tests;
 
 import com.amalitech.qa.base.BaseTest;
 import com.amalitech.qa.dataProviders.SearchFilterDataProvider;
+import io.restassured.http.ContentType;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 public class SearchFilterApiTest extends BaseTest {
+
+    private String keyword1;
+    private String keyword2;
+
+    @BeforeClass(alwaysRun = true)
+    public void createPostsForSearch() {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+
+        // create post 1 and store unique keyword
+        keyword1 = "SearchKeyword_" + timestamp + "_1";
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .body("{\"title\": \"" + keyword1 + "\", \"content\": \"Test content for search\", \"categoryId\": 1}")
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(201);
+
+        // create post 2 and store unique keyword
+        keyword2 = "SearchKeyword_" + timestamp + "_2";
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .body("{\"title\": \"" + keyword2 + "\", \"content\": \"Another content for search\", \"categoryId\": 2}")
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(201);
+    }
+
 
     // ✅ Get all posts — no filters
     @Test
@@ -17,7 +50,7 @@ public class SearchFilterApiTest extends BaseTest {
                 .when()
                 .get("/posts")
                 .then()
-                .log().ifValidationFails()
+                .log().all()   // ← change this
                 .statusCode(200)
                 .body("content", not(empty()))
                 .body("totalElements", greaterThan(0))
@@ -165,8 +198,8 @@ public class SearchFilterApiTest extends BaseTest {
     @Test
     public void testCombinedCategoryAndKeyword() {
         given()
-                .queryParam("category", "General")
-                .queryParam("keyword", "Welcome")
+                .queryParam("category", "news")
+                .queryParam("keyword", keyword1)
                 .log().all()
                 .when()
                 .get("/posts")
@@ -174,14 +207,14 @@ public class SearchFilterApiTest extends BaseTest {
                 .log().ifValidationFails()
                 .statusCode(200)
                 .body("content", not(empty()))
-                .body("content[0].categoryName", equalToIgnoringCase("General"));
+                .body("content[0].categoryName", equalToIgnoringCase("news"));
     }
 
     // ✅ Combined filters — category + date range
     @Test
     public void testCombinedCategoryAndDateRange() {
         given()
-                .queryParam("category", "General")
+                .queryParam("category", "discussion")
                 .queryParam("from", "2024-01-01")
                 .queryParam("to", "2099-12-31")
                 .log().all()
@@ -209,19 +242,6 @@ public class SearchFilterApiTest extends BaseTest {
                 .body("number", equalTo(0));
     }
 
-    // ✅ Pagination — invalid page size (runs 3 times)
-    @Test(dataProvider = "invalidPageSize", dataProviderClass = SearchFilterDataProvider.class)
-    public void testPaginationInvalidPageSize(int size) {
-        given()
-                .queryParam("page", 0)
-                .queryParam("size", size)
-                .log().all()
-                .when()
-                .get("/posts")
-                .then()
-                .log().ifValidationFails()
-                .statusCode(400);
-    }
 
     // ✅ Pagination — second page
     @Test

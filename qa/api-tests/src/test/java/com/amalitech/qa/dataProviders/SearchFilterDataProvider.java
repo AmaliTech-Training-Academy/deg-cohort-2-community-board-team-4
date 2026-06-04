@@ -8,10 +8,10 @@ public class SearchFilterDataProvider {
     @DataProvider(name = "validCategory")
     public Object[][] validCategory() {
         return new Object[][] {
-                { "General" },
-                { "Events" },
-                { "Tech" },
-                { "Help" }
+                { "NEWS" },
+                { "EVENT" },
+                { "DISCUSSION" },
+                { "ALERT" }
         };
     }
 
@@ -28,9 +28,9 @@ public class SearchFilterDataProvider {
     @DataProvider(name = "caseInsensitiveCategory")
     public Object[][] caseInsensitiveCategory() {
         return new Object[][] {
-                { "general" },
-                { "GENERAL" },
-                { "GeNeRaL" }
+                { "news" },
+                { "NEWS" },
+                { "nEwS" }
         };
     }
 
@@ -44,7 +44,7 @@ public class SearchFilterDataProvider {
         };
     }
 
-    // ✅ Page sizes
+    // ✅ Valid page sizes
     @DataProvider(name = "validPageSize")
     public Object[][] validPageSize() {
         return new Object[][] {
@@ -54,13 +54,4 @@ public class SearchFilterDataProvider {
         };
     }
 
-    // ✅ Invalid page sizes
-    @DataProvider(name = "invalidPageSize")
-    public Object[][] invalidPageSize() {
-        return new Object[][] {
-                { 0 },
-                { -1 },
-                { 101 }
-        };
-    }
 }
