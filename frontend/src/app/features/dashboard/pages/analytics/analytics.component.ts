@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartData, ChartOptions } from 'chart.js';
 import { HeaderComponent } from '../../../../core/components/header/header.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
+import { AnalyticsService } from '../../../../core/services/analytics.service';
 
 interface Contributor {
   rank: number;
@@ -18,59 +19,101 @@ interface Contributor {
   templateUrl: './analytics.component.html',
   styleUrl: './analytics.component.scss',
 })
-export class AnalyticsComponent {
+export class AnalyticsComponent implements OnInit {
+  private analyticsService = inject(AnalyticsService);
+
   breadcrumbItems: BreadcrumbItem[] = [
     { label: 'Home', link: '/dashboard', home: true },
     { label: 'Analytics' },
   ];
 
-  totalPosts = 8;
-  totalComments = 32;
+  isLoading = signal<boolean>(true);
+  errorMessage = signal<string>('');
 
-  contributors: Contributor[] = [
-    { rank: 1, name: 'John Smith', posts: 19 },
-    { rank: 2, name: 'Brooklyn Simmons', posts: 15 },
-    { rank: 3, name: 'Kristin Watson', posts: 14 },
-    { rank: 4, name: 'Courtney Henry', posts: 12 },
-    { rank: 5, name: 'Leslie Alexander', posts: 11 },
-    { rank: 6, name: 'Dianne Russell', posts: 10 },
-    { rank: 7, name: 'Dianne Russell', posts: 9 },
-    { rank: 8, name: 'Dianne Russell', posts: 7 },
-    { rank: 9, name: 'Dianne Russell', posts: 5 },
-    { rank: 10, name: 'Dianne Russell', posts: 2 },
-  ];
+  totalPosts = signal<number>(0);
+  totalComments = signal<number>(0);
+  totalUsers = signal<number>(0);
+
+  contributors = signal<Contributor[]>([]);
+
+  categoryData = signal<ChartData<'bar'> | null>(null);
+  weekdayData = signal<ChartData<'bar'> | null>(null);
 
   private readonly barColor = '#3d5567';
   private readonly avgColor = '#3b5bdb';
 
-  categoryData: ChartData<'bar'> = {
-    labels: ['Events', 'Help Requests', 'Lost & Found', 'Recommendations'],
-    datasets: [
-      {
-        data: [37, 14, 25, 9],
-        backgroundColor: this.barColor,
-        borderRadius: 2,
-        barPercentage: 0.55,
-        categoryPercentage: 0.7,
-      },
-    ],
-  };
-
-  weekdayData: ChartData<'bar'> = {
-    labels: ['Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat', 'Sun'],
-    datasets: [
-      {
-        data: [35, 12, 25, 8, 0, 0, 0],
-        backgroundColor: this.barColor,
-        borderRadius: 2,
-        barPercentage: 0.5,
-        categoryPercentage: 0.7,
-      },
-    ],
-  };
-
   categoryOptions = this.buildOptions();
   weekdayOptions = this.buildOptions();
+
+  ngOnInit(): void {
+    const getWeekday = (dateStr: string): string => {
+      const days = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
+      const dateParts = dateStr.split('-');
+      const d = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));
+      return days[d.getDay()];
+    };
+
+    this.analyticsService.getAnalytics().subscribe({
+      next: (data) => {
+        this.totalPosts.set(data.summary?.totalPosts || 0);
+        this.totalComments.set(data.summary?.totalComments || 0);
+        this.totalUsers.set(data.summary?.totalUsers || 0);
+
+        // Map Category chart data
+        const catLabels = (data.categoryCounts || []).map(
+          c => c.category === 'Event' ? 'Events' : c.category
+        );
+        const catValues = (data.categoryCounts || []).map(c => c.postCount);
+
+        this.categoryData.set({
+          labels: catLabels,
+          datasets: [
+            {
+              data: catValues,
+              backgroundColor: this.barColor,
+              borderRadius: 2,
+              barPercentage: 0.55,
+              categoryPercentage: 0.7,
+            }
+          ]
+        });
+
+        // Map Weekday chart data (sorted chronologically)
+        const sortedDaily = [...(data.dailyPostCounts || [])].sort(
+          (a, b) => a.day.localeCompare(b.day)
+        );
+        const dailyLabels = sortedDaily.map(d => getWeekday(d.day));
+        const dailyValues = sortedDaily.map(d => d.postCount);
+
+        this.weekdayData.set({
+          labels: dailyLabels,
+          datasets: [
+            {
+              data: dailyValues,
+              backgroundColor: this.barColor,
+              borderRadius: 2,
+              barPercentage: 0.5,
+              categoryPercentage: 0.7,
+            }
+          ]
+        });
+
+        // Map top contributors (up to 10)
+        const topContributorsList = (data.topUsers || []).map((user, idx) => ({
+          rank: idx + 1,
+          name: user.name || 'Anonymous User',
+          posts: user.postCount
+        }));
+        this.contributors.set(topContributorsList);
+
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.errorMessage.set('Could not load analytics statistics. Please try again later.');
+        this.isLoading.set(false);
+      }
+    });
+  }
 
   private buildOptions(): ChartOptions<'bar'> {
     return {
@@ -97,8 +140,7 @@ export class AnalyticsComponent {
         },
         y: {
           beginAtZero: true,
-          max: 40,
-          ticks: { stepSize: 10, color: '#5c6f81', font: { size: 11 } },
+          ticks: { color: '#5c6f81', font: { size: 11 } },
           grid: { color: '#eef1f4' },
           border: { display: false },
         },
@@ -110,11 +152,13 @@ export class AnalyticsComponent {
   avgLinePlugin = {
     id: 'avgLine',
     afterDatasetsDraw: (chart: any) => {
-      const avg =
-        chart.data.datasets[0].data
-          .filter((v: number) => v > 0)
-          .reduce((a: number, b: number) => a + b, 0) /
-        chart.data.datasets[0].data.filter((v: number) => v > 0).length;
+      const dataArr = chart.data?.datasets?.[0]?.data as number[];
+      if (!dataArr || dataArr.length === 0) return;
+
+      const nonZero = dataArr.filter((v: number) => v > 0);
+      if (nonZero.length === 0) return;
+
+      const avg = nonZero.reduce((a: number, b: number) => a + b, 0) / nonZero.length;
       const yScale = chart.scales['y'];
       const { left, right } = chart.chartArea;
       const y = yScale.getPixelForValue(avg);
