@@ -41,6 +41,10 @@
           </span>
         </header>
 
+        @if (post()?.imageUrl) {
+          <img class="detail-image" [src]="post()?.imageUrl" [alt]="post()?.title">
+        }
+
         <div class="detail-body">
           <p>{{ post()?.content }}</p>
         </div>

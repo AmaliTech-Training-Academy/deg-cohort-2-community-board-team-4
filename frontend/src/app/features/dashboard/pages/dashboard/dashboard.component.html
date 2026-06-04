@@ -156,6 +156,9 @@
         <div class="posts-list">
           @for (post of posts(); track post.id) {
             <article class="post-card" [routerLink]="['posts', post.slug]">
+              @if (post.imageUrl) {
+                <img class="post-card-image" [src]="post.imageUrl" [alt]="post.title" loading="lazy">
+              }
               <div class="post-card-header">
                 <h2 class="post-title">{{ post.title }}</h2>
                 <span class="category-badge" [ngClass]="post.category?.name?.toLowerCase() || ''">
