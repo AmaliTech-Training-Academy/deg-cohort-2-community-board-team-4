@@ -1,0 +1,5 @@
+# Renders the official-AWS-icon architecture chart (devops/diagrams/architecture.py).
+# Also needs the Graphviz system package:
+#   macOS:  brew install graphviz
+#   Debian: sudo apt-get install -y graphviz
+diagrams==0.23.4

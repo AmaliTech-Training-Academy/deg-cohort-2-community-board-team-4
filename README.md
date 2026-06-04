@@ -1,7 +1,12 @@
 # CommunityBoard
+
+[![CI Pipeline](https://github.com/AmaliTech-Training-Academy/deg-cohort-2-community-board-team-4/actions/workflows/ci.yml/badge.svg)](https://github.com/AmaliTech-Training-Academy/deg-cohort-2-community-board-team-4/actions/workflows/ci.yml)
+
 **AmaliTech Group Project – Full-Stack Teams (Teams 1-5)**
 
 A community notice board where users can post announcements, events, and discussions. Supports categories, comments, and search.
+
+📦 **Deploying or running this?** See [DEPLOYMENT.md](DEPLOYMENT.md) (prerequisites, env vars, steps, pipeline design) and [ARCHITECTURE.md](ARCHITECTURE.md) (AWS topology diagram).
 
 ## Tech Stack
 - **Backend:** Java 17 + Spring Boot 3.2, Spring Security (JWT), Spring Data JPA, PostgreSQL
