@@ -17,12 +17,29 @@ public class PostsDataProvider {
         };
     }
 
-    // ✅ Static JSON — missing fields
-    @DataProvider(name = "createPostInvalid")
+    // ✅ Static JSON — all invalid cases
+    @DataProvider(name = "createPostMissingData")
     public Object[][] createPostInvalid() {
         return new Object[][] {
-                { JsonReader.getTestData("posts/create_post.json", "missing_title") },
-                { JsonReader.getTestData("posts/create_post.json", "missing_content") }
+                { JsonReader.getTestData("posts/create_post_invalid.json", "missing_title") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "missing_content") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "missing_category") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "empty_title") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "empty_content") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "whitespace_title") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "whitespace_content") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "empty_body") }
         };
     }
+
+    @DataProvider(name = "createPostWrongData")
+    public Object[][] createPostWrong() {
+        return new Object[][] {
+
+                { JsonReader.getTestData("posts/create_post_invalid.json", "invalid_category_id") },
+                { JsonReader.getTestData("posts/create_post_invalid.json", "negative_category_id") },
+
+        };
+    }
+
 }
