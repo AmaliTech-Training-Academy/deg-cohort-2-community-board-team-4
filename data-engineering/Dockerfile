@@ -32,17 +32,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 
-# Dedicated non-root user/group.
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+# Dedicated non-root user/group. bash powers the ETL scheduler loop
+# (scripts/run_etl.sh) — python:slim ships dash as /bin/sh, not bash.
+RUN apt-get update && apt-get install -y --no-install-recommends bash \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app && useradd --system --gid app --no-create-home app
 
 # Bring over the prebuilt venv, then the application code.
 COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
 USER app
-
-# Seed sample data on startup ONLY when RUN_SEED=true, then run the normal
-# command. RUN_SEED is set per environment in the compose files, so the same
-# image seeds in dev/staging but never in prod. seed.py also refuses to run
-# when APP_ENV=production, so prod is guarded twice.
-CMD ["sh", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then python scripts/seed.py --reset; fi; exec python etl_pipeline.py"]
+# Run the ETL once on startup, then on a daily loop — keeps the container Up so
+# compose's restart policy supervises it. See scripts/run_etl.sh.
+CMD ["bash", "scripts/run_etl.sh"]
