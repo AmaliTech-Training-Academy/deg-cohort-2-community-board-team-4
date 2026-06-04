@@ -108,3 +108,30 @@ python analytics.py --output-dir /data/analytics
 Output dir defaults to `output/`, overridable via `--output-dir` or the
 `ANALYTICS_OUTPUT_DIR` env var (e.g. a mounted volume in containers). The
 `output/` directory is git-ignored.
+
+## Scheduling (daily, in-container)
+
+The pipeline runs as a long-lived service that does a full idempotent refresh
+once on startup, then every 24h. At this data volume that's the right tool — no
+cron daemon, no orchestrator, no extra moving parts. The whole schedule is the
+loop in [`scripts/run_etl.sh`](scripts/run_etl.sh), which is the image's `CMD`.
+
+It starts automatically with the stack:
+
+```bash
+docker compose up -d           # data-engineering runs the ETL, then loops daily
+docker compose logs -f data-engineering
+```
+
+The service `depends_on` postgres being healthy, and `restart: unless-stopped`
+supervises it. DB credentials come from the compose environment (`DB_HOST`,
+`DB_USER`, …), not a baked-in `.env`.
+
+- **Interval** is overridable via the `ETL_INTERVAL` env var (seconds, default
+  `86400`). Drop it low — e.g. `ETL_INTERVAL=60` — to watch repeated runs locally.
+- A failed run is logged and retried next cycle; it never kills the scheduler.
+- For a one-shot run instead of the loop: `docker compose run --rm
+  data-engineering python etl_pipeline.py`.
+
+> Run it on the host without Docker for dev with `python etl_pipeline.py` (or
+> `bash scripts/run_etl.sh` for the loop) — see [Setup](#setup).

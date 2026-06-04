@@ -32,12 +32,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 
-# Dedicated non-root user/group.
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+# Dedicated non-root user/group. bash powers the ETL scheduler loop
+# (scripts/run_etl.sh) — python:slim ships dash as /bin/sh, not bash.
+RUN apt-get update && apt-get install -y --no-install-recommends bash \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app && useradd --system --gid app --no-create-home app
 
 # Bring over the prebuilt venv, then the application code.
 COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
+# Analytics output dir is git-ignored (absent from the build context), so the
+# non-root app user can't create it under root-owned /app at runtime. Pre-make
+# it owned by app. ANALYTICS_OUTPUT_DIR can repoint this to a mounted volume.
+RUN mkdir -p /app/output && chown app:app /app/output
+
 USER app
-CMD ["python", "etl_pipeline.py"]
+# Run the ETL once on startup, then on a daily loop — keeps the container Up so
+# compose's restart policy supervises it. See scripts/run_etl.sh.
+CMD ["bash", "scripts/run_etl.sh"]
