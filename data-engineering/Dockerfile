@@ -40,4 +40,9 @@ COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
 USER app
-CMD ["python", "etl_pipeline.py"]
+
+# Seed sample data on startup ONLY when RUN_SEED=true, then run the normal
+# command. RUN_SEED is set per environment in the compose files, so the same
+# image seeds in dev/staging but never in prod. seed.py also refuses to run
+# when APP_ENV=production, so prod is guarded twice.
+CMD ["sh", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then python scripts/seed.py --reset; fi; exec python etl_pipeline.py"]
