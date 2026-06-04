@@ -1,0 +1,25 @@
+{
+  "valid_category_1": {
+    "category": "General"
+  },
+  "valid_category_2": {
+    "category": "Events"
+  },
+  "valid_keyword_1": {
+    "keyword": "Welcome"
+  },
+  "valid_keyword_2": {
+    "keyword": "Team"
+  },
+  "valid_date_range": {
+    "from": "2024-01-01",
+    "to": "2099-12-31"
+  },
+  "invalid_category": {
+    "category": "INVALID"
+  },
+  "invalid_date_format": {
+    "from": "01-01-2024",
+    "to": "31-12-2024"
+  }
+}
