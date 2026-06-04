@@ -52,7 +52,7 @@
                     <input [type]="passwordVisible ? 'text' : 'password'" id="password" formControlName="password"
                         placeholder="Enter password" [readonly]="isLoading">
                     <button type="button" class="toggle-password" (click)="togglePasswordVisibility('pass')" [disabled]="isLoading">
-                        <img src="assets/icons/eye-off.svg" alt="Toggle Password View" class="eye-icon">
+                        <img [src]="passwordVisible ? 'assets/icons/eye.svg' : 'assets/icons/eye-off.svg'" alt="Toggle Password View" class="eye-icon">
                     </button>
                 </div>
             
@@ -76,7 +76,7 @@
                     <input [type]="confirmPasswordVisible ? 'text' : 'password'" id="confirmPassword"
                         formControlName="confirmPassword" placeholder="Enter password" [readonly]="isLoading">
                     <button type="button" class="toggle-password" (click)="togglePasswordVisibility('confirm')" [disabled]="isLoading">
-                        <img src="assets/icons/eye-off.svg" alt="Toggle Password View" class="eye-icon">
+                        <img [src]="confirmPasswordVisible ? 'assets/icons/eye.svg' : 'assets/icons/eye-off.svg'" alt="Toggle Password View" class="eye-icon">
                     </button>
                 </div>
 

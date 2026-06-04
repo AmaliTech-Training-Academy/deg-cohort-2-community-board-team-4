@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,7 +13,7 @@ import { Post, Comment } from '../../../../core/models/post.interface';
   templateUrl: './post-detail.component.html',
   styleUrl: './post-detail.component.scss'
 })
-export class PostDetailComponent implements OnInit {
+export class PostDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private postService = inject(PostService);
@@ -21,6 +21,9 @@ export class PostDetailComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   currentUser = this.authService.currentUser;
+
+  ticker = signal<number>(0);
+  private tickerIntervalId: any;
 
   post = signal<Post | null>(null);
   comments = signal<Comment[]>([]);
@@ -37,7 +40,7 @@ export class PostDetailComponent implements OnInit {
   deleteError = signal<string>('');
 
   commentForm: FormGroup = this.fb.group({
-    content: ['', [Validators.required, Validators.maxLength(1000)]]
+    content: ['', [Validators.required, Validators.maxLength(1000), Validators.pattern(/\S/)]]
   });
 
   ngOnInit(): void {
@@ -48,6 +51,15 @@ export class PostDetailComponent implements OnInit {
     }
 
     this.loadPost(idParam);
+    this.tickerIntervalId = setInterval(() => {
+      this.ticker.update(n => n + 1);
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.tickerIntervalId) {
+      clearInterval(this.tickerIntervalId);
+    }
   }
 
   loadPost(identifier: string | number): void {
@@ -165,16 +177,30 @@ export class PostDetailComponent implements OnInit {
   }
 
   getRelativeTime(dateStr: string): string {
-    const date = new Date(dateStr);
+    this.ticker();
+
+    if (!dateStr) return '';
+    let sanitizedDateStr = dateStr;
+    if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !/-\d{2}:\d{2}$/.test(dateStr)) {
+      sanitizedDateStr = dateStr + 'Z';
+    }
+
+    const date = new Date(sanitizedDateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `about ${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `about ${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMs < 2000) return 'just now';
+
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   }
 }
