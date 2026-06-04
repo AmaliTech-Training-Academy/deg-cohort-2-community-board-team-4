@@ -31,7 +31,7 @@ export class PostService {
   getPosts(
     page: number, 
     limit: number, 
-    categoryId?: number, 
+    categoryName?: string, 
     search?: string,
     fromDate?: string,
     toDate?: string
@@ -44,12 +44,8 @@ export class PostService {
       params = params.set('keyword', search.trim());
     }
 
-    if (categoryId) {
-      // Lookup category name matching categoryId to feed query param
-      const category = this.categoriesState().find(c => c.id === categoryId);
-      if (category) {
-        params = params.set('category', category.name);
-      }
+    if (categoryName && categoryName.trim() !== '') {
+      params = params.set('category', categoryName.trim());
     }
 
     if (fromDate) {
