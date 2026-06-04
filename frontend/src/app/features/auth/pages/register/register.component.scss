@@ -100,6 +100,11 @@
                 color: var(--color-error);
                 opacity: 0.6;
             }
+
+            &:-webkit-autofill {
+                -webkit-box-shadow: 0 0 0 1000px var(--color-error-bg) inset !important;
+                -webkit-text-fill-color: var(--color-error) !important;
+            }
         }
     }
 
@@ -122,6 +127,17 @@
             &::placeholder {
                 color: #5A6F7C;
             }
+
+            &:-webkit-autofill {
+                -webkit-box-shadow: 0 0 0 1000px #ECECEB inset !important;
+                -webkit-text-fill-color: #395362 !important;
+                transition: background-color 5000s ease-in-out 0s;
+
+                &:focus {
+                    -webkit-box-shadow: 0 0 0 1000px var(--color-white) inset !important;
+                    -webkit-text-fill-color: #395362 !important;
+                }
+            }
         }
 
     .toggle-password {
@@ -132,15 +148,17 @@
         display: flex;
         align-items: center;
 
+        &:hover {
+            .eye-icon {
+                opacity: 0.9;
+            }
+        }
+
         .eye-icon {
             width: 16px;
             height: 16px;
             opacity: 0.6;
             transition: var(--transition-hover);
-
-            &:hover {
-                opacity: 0.9;
-            }
         }
     }
 }
