@@ -178,10 +178,12 @@ public class DashboardPage {
         WebElement textarea = helper.waitForElementLocated(By.cssSelector("textarea.form-textarea"));
         helper.type(textarea, content);
 
-        // open category dropdown and select first option
-        WebElement categoryTrigger = helper.waitForElementLocated(By.cssSelector("button.custom-select-trigger"));
+        // open category dropdown scoped to .modal-form to avoid matching the dashboard date-filter trigger
+        WebElement categoryTrigger = helper.waitForElementLocated(
+                By.cssSelector(".modal-form .custom-select-trigger"));
         helper.click(categoryTrigger);
-        WebElement firstOption = helper.waitForElementLocated(By.cssSelector("button.custom-select-option"));
+        WebElement firstOption = helper.waitForElementLocated(
+                By.cssSelector(".modal-form .custom-select-option"));
         helper.click(firstOption);
     }
 
