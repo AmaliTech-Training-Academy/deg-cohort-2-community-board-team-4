@@ -2,31 +2,28 @@
 Unit tests for analytics.py.
 
 No live database: queries are tested against a MagicMock connection, and the
-JSON export is tested against a tmp_path. Covers the SQL-binding regression
-(make_interval, not an interpolated INTERVAL string), gap-filling, empty-DB
-safety, atomic writes, and the JSON envelope shape.
+DB load is tested against a MagicMock engine/connection. Covers the SQL-binding
+regression (make_interval, not an interpolated INTERVAL string), gap-filling,
+empty-DB safety, the truncate-then-insert load, and arg parsing.
 """
 
-import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from analytics import (  # noqa: E402
     DEFAULT_DAYS,
     DEFAULT_TOP,
-    _envelope,
-    export_json,
+    LOAD_COLUMNS,
+    _load_table,
     parse_args,
     posts_per_category,
     posts_per_day,
-    run_export,
+    run_load,
     top_contributors,
     totals,
 )
@@ -100,12 +97,13 @@ class TestPostsPerDay:
         rows = [SimpleNamespace(day=today, post_count=4)]  # only today has posts
         result = posts_per_day(_mock_conn(rows), days=7)
         assert len(result) == 7
-        assert result[-1] == {"day": today.isoformat(), "post_count": 4}
+        assert result[-1] == {"day": today, "post_count": 4}
         assert all(r["post_count"] == 0 for r in result[:-1])
 
-    def test_days_are_contiguous_and_iso(self):
+    def test_days_are_contiguous_date_objects(self):
         result = posts_per_day(_mock_conn([]), days=5)
-        days = [datetime.fromisoformat(r["day"]).date() for r in result]
+        days = [r["day"] for r in result]
+        assert all(hasattr(d, "isoformat") and not isinstance(d, str) for d in days)
         assert days == sorted(days)
         for earlier, later in zip(days, days[1:]):
             assert later - earlier == timedelta(days=1)
@@ -121,7 +119,7 @@ class TestTopContributors:
         conn = _mock_conn([SimpleNamespace(id=1, name="Ada", email="ada@x.io", post_count=9)])
         result = top_contributors(conn, limit=5)
         assert conn.execute.call_args[0][1] == {"limit": 5}
-        assert result == [{"id": 1, "name": "Ada", "email": "ada@x.io", "post_count": 9}]
+        assert result == [{"user_id": 1, "name": "Ada", "email": "ada@x.io", "post_count": 9}]
 
     def test_orders_desc_with_name_tiebreak(self):
         conn = _mock_conn([])
@@ -144,58 +142,56 @@ class TestTotals:
         assert all(isinstance(v, int) for v in rec.values())
 
 
-class TestEnvelopeAndExport:
-    def test_envelope_shape(self):
-        env = _envelope([{"a": 1}])
-        assert set(env) == {"generated_at", "count", "data"}
-        assert env["count"] == 1
-        assert env["data"] == [{"a": 1}]
-        # generated_at is ISO-8601 parseable
-        datetime.fromisoformat(env["generated_at"])
-
-    def test_export_writes_valid_json(self, tmp_path):
+class TestLoadTable:
+    def test_truncates_then_inserts_with_generated_at(self):
+        conn = MagicMock()
+        ts = datetime(2026, 6, 4, tzinfo=timezone.utc)
         records = [{"category": "NEWS", "post_count": 3}]
-        path = export_json(records, "posts_per_category.json", tmp_path)
-        assert path == tmp_path / "posts_per_category.json"
-        loaded = json.loads(path.read_text())
-        assert loaded["data"] == records
-        assert loaded["count"] == 1
+        _load_table(conn, "category_counts", records, ts)
 
-    def test_export_leaves_no_tmp_file(self, tmp_path):
-        """Atomic write: the .tmp file is gone after a successful replace."""
-        export_json([{"x": 1}], "out.json", tmp_path)
-        assert list(tmp_path.glob("*.tmp")) == []
+        # First execute is the TRUNCATE, second the INSERT.
+        truncate_sql = str(conn.execute.call_args_list[0][0][0])
+        assert "TRUNCATE TABLE analytics.category_counts RESTART IDENTITY" in truncate_sql
 
-    def test_export_creates_output_dir(self, tmp_path):
-        nested = tmp_path / "a" / "b"
-        export_json([], "empty.json", nested)
-        assert (nested / "empty.json").exists()
+        insert_args = conn.execute.call_args_list[1][0]
+        assert "INSERT INTO analytics.category_counts" in str(insert_args[0])
+        # generated_at is stamped onto every row.
+        assert insert_args[1] == [{"category": "NEWS", "post_count": 3, "generated_at": ts}]
 
-    def test_export_serializes_dates_as_strings(self, tmp_path):
-        path = export_json([{"day": "2026-06-01", "post_count": 0}], "d.json", tmp_path)
-        loaded = json.loads(path.read_text())
-        assert loaded["data"][0]["day"] == "2026-06-01"
+    def test_empty_records_truncates_but_does_not_insert(self):
+        conn = MagicMock()
+        ts = datetime(2026, 6, 4, tzinfo=timezone.utc)
+        _load_table(conn, "summary", [], ts)
+        # Only the TRUNCATE ran; no INSERT.
+        assert conn.execute.call_count == 1
+        assert "TRUNCATE TABLE analytics.summary" in str(conn.execute.call_args[0][0])
+
+    def test_load_columns_cover_all_target_tables(self):
+        assert set(LOAD_COLUMNS) == {
+            "category_counts",
+            "daily_post_counts",
+            "top_users",
+            "summary",
+        }
 
 
-class TestRunExport:
-    def test_writes_all_files(self, tmp_path):
-        conn = _mock_conn([])
-        # totals() uses .one(); provide a zero-count row.
+class TestRunLoad:
+    def test_creates_schema_and_loads_all_tables(self):
+        conn = MagicMock()
+        conn.execute.return_value.all.return_value = []
         conn.execute.return_value.one.return_value = SimpleNamespace(
             total_posts=0, total_comments=0, total_users=0
         )
         engine = MagicMock()
-        engine.connect.return_value.__enter__.return_value = conn
+        engine.begin.return_value.__enter__.return_value = conn
 
-        run_export(engine, days=7, limit=5, output_dir=tmp_path)
+        run_load(engine, days=7, limit=5)
 
-        names = {p.name for p in tmp_path.glob("*.json")}
-        assert names == {
-            "totals.json",
-            "posts_per_category.json",
-            "posts_per_day.json",
-            "top_contributors.json",
-        }
+        executed = [str(c[0][0]) for c in conn.execute.call_args_list]
+        # Schema DDL ran first, and every analytics table was truncated.
+        assert any("CREATE SCHEMA IF NOT EXISTS analytics" in sql for sql in executed)
+        for table in ("summary", "category_counts", "daily_post_counts", "top_users"):
+            assert any(f"TRUNCATE TABLE analytics.{table}" in sql for sql in executed)
 
 
 class TestParseArgs:
@@ -205,11 +201,12 @@ class TestParseArgs:
         assert args.top == DEFAULT_TOP
 
     def test_overrides(self):
-        args = parse_args(["--days", "7", "--top", "10", "--output-dir", "/tmp/x"])
+        args = parse_args(["--days", "7", "--top", "10"])
         assert args.days == 7
         assert args.top == 10
-        assert args.output_dir == Path("/tmp/x")
 
 
 if __name__ == "__main__":
+    import pytest
+
     pytest.main([__file__, "-v"])

@@ -73,41 +73,32 @@ Shared helpers for the package.
 python etl_pipeline.py
 ```
 
-Extracts posts/comments from the app DB, transforms into analytics tables,
-then runs the analytics export (below). Exits non-zero on failure.
+Runs the analytics load (below) against the app DB. Exits non-zero on failure.
 
-## Analytics Export (`analytics.py`)
+## Analytics Load (`analytics.py`)
 
-Runs three read-only queries against the live tables and writes one JSON file
-per dataset for the dashboard frontend:
+Runs read-only queries against the live application tables and loads each
+result into a table under the `analytics` schema for the dashboard to read:
 
-| File | Dataset |
+| Table | Dataset |
 |------|---------|
-| `totals.json` | Total posts, comments, and users |
-| `posts_per_category.json` | Post count per category (NEWS/EVENT/DISCUSSION/ALERT) |
-| `posts_per_day.json` | Post count per day over the last N days (gap-filled with zeros) |
-| `top_contributors.json` | Top N users by post count |
+| `analytics.summary` | Total posts, comments, and users |
+| `analytics.category_counts` | Post count per category (NEWS/EVENT/DISCUSSION/ALERT) |
+| `analytics.daily_post_counts` | Post count per day over the last N days (gap-filled with zeros) |
+| `analytics.top_users` | Top N users by post count |
 
-Each file has the shape:
-
-```json
-{ "generated_at": "<iso8601 utc>", "count": 4, "data": [ ... ] }
-```
-
-Files are written **atomically** (temp file + `os.replace`), so the frontend
-never reads a half-written file.
+The load is a **full refresh in one transaction**: the schema and tables are
+created if missing, every target table is `TRUNCATE ... RESTART IDENTITY`'d,
+and the freshly computed rows are inserted with a shared `generated_at` UTC
+timestamp. At this data volume a truncate-and-reload is simpler and safer than
+incremental upserts, and it's idempotent — rerunning yields the same rows.
 
 ### Usage
 
 ```bash
-python analytics.py                     # 30 days, top 5, default output dir
+python analytics.py                     # 30 days, top 5
 python analytics.py --days 7 --top 10
-python analytics.py --output-dir /data/analytics
 ```
-
-Output dir defaults to `output/`, overridable via `--output-dir` or the
-`ANALYTICS_OUTPUT_DIR` env var (e.g. a mounted volume in containers). The
-`output/` directory is git-ignored.
 
 ## Scheduling (daily, in-container)
 

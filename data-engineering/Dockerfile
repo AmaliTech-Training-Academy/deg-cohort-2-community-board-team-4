@@ -42,11 +42,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash \
 COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
-# Analytics output dir is git-ignored (absent from the build context), so the
-# non-root app user can't create it under root-owned /app at runtime. Pre-make
-# it owned by app. ANALYTICS_OUTPUT_DIR can repoint this to a mounted volume.
-RUN mkdir -p /app/output && chown app:app /app/output
-
 USER app
 # Run the ETL once on startup, then on a daily loop — keeps the container Up so
 # compose's restart policy supervises it. See scripts/run_etl.sh.
