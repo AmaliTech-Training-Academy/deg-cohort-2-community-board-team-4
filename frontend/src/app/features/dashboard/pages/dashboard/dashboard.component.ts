@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -38,8 +38,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   postForm: FormGroup = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(255)]],
     categoryId: ['', Validators.required],
-    content: ['', Validators.required]
+    content: ['', Validators.required],
+    image: [null as File | null, Validators.required]
   });
+
+  // Mirror the backend's accepted types and 5MB limit so users get instant feedback.
+  private readonly allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  private readonly maxImageSize = 5 * 1024 * 1024;
+
+  imagePreviewUrl = signal<string | null>(null);
+  imageError = signal<string>('');
+
+  @ViewChild('imageInput') imageInput?: ElementRef<HTMLInputElement>;
 
   isDropdownOpen = signal<boolean>(false);
 
@@ -146,7 +156,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.postError.set('');
     this.isDropdownOpen.set(false);
     this.selectedCategoryIdForPost.set(null);
-    this.postForm.reset({ title: '', categoryId: '', content: '' });
+    this.postForm.reset({ title: '', categoryId: '', content: '', image: null });
+    this.clearImage();
   }
 
   closeCreateModal(): void {
@@ -156,6 +167,48 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isDropdownOpen.set(false);
     this.selectedCategoryIdForPost.set(null);
     this.postForm.reset();
+    this.clearImage();
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    this.imageError.set('');
+
+    if (!file) {
+      return;
+    }
+    if (!this.allowedImageTypes.includes(file.type)) {
+      this.imageError.set('Unsupported image type. Use JPEG, PNG, WEBP or GIF.');
+      this.clearImage();
+      return;
+    }
+    if (file.size > this.maxImageSize) {
+      this.imageError.set('Image is too large. Maximum size is 5MB.');
+      this.clearImage();
+      return;
+    }
+
+    this.postForm.get('image')?.setValue(file);
+    this.postForm.get('image')?.markAsTouched();
+
+    const reader = new FileReader();
+    reader.onload = () => this.imagePreviewUrl.set(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  removeImage(): void {
+    this.imageError.set('');
+    this.clearImage();
+    this.postForm.get('image')?.markAsTouched();
+  }
+
+  private clearImage(): void {
+    this.postForm.get('image')?.setValue(null);
+    this.imagePreviewUrl.set(null);
+    if (this.imageInput) {
+      this.imageInput.nativeElement.value = '';
+    }
   }
 
   closeDropdown(): void {
@@ -188,15 +241,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isSubmittingPost.set(true);
     this.postError.set('');
 
-    const { title, content, categoryId } = this.postForm.value;
+    const { title, content, categoryId, image } = this.postForm.value;
 
-    this.postService.createPost(title, content, Number(categoryId)).subscribe({
+    this.postService.createPost(title, content, Number(categoryId), image).subscribe({
       next: () => {
         this.isSubmittingPost.set(false);
         this.isCreateModalOpen.set(false);
         this.postForm.reset();
+        this.clearImage();
         this.selectedCategoryIdForPost.set(null);
-        
+
         this.selectedCategoryId.set(undefined);
         this.searchQuery.set('');
         this.currentPage.set(1);

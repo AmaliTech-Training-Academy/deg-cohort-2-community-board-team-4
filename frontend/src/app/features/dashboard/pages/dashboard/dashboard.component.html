@@ -322,6 +322,32 @@
             }
           </div>
 
+          <div class="form-group">
+            <label for="postImage" class="form-label">Cover Image</label>
+
+            @if (imagePreviewUrl()) {
+              <div class="image-preview">
+                <img [src]="imagePreviewUrl()" alt="Selected cover image preview">
+                <button type="button" class="btn-remove-image" (click)="removeImage()">Remove</button>
+              </div>
+            }
+
+            <input
+              #imageInput
+              id="postImage"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="form-file-input"
+              (change)="onImageSelected($event)"
+            >
+
+            @if (imageError()) {
+              <div class="validation-error">{{ imageError() }}</div>
+            } @else if (postForm.get('image')?.touched && postForm.get('image')?.errors?.['required']) {
+              <div class="validation-error">A cover image is required</div>
+            }
+          </div>
+
           <div class="modal-actions">
             <button type="button" class="btn-modal-cancel" [disabled]="isSubmittingPost()" (click)="closeCreateModal()">Cancel</button>
             <button type="submit" class="btn-modal-submit" [disabled]="postForm.invalid || isSubmittingPost()">
