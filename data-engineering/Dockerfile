@@ -43,6 +43,14 @@ COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
 USER app
-# Run the ETL once on startup, then on a daily loop — keeps the container Up so
-# compose's restart policy supervises it. See scripts/run_etl.sh.
-CMD ["bash", "scripts/run_etl.sh"]
+# Startup: optionally seed sample data (idempotent), then hand off to the ETL
+# scheduler loop (scripts/run_etl.sh) which keeps the container Up so compose's
+# restart policy supervises it.
+#
+# Seeding runs ONLY when RUN_SEED=true (set per-environment in compose, never in
+# prod). It is idempotent: Flyway seeds users/categories/posts but never
+# comments, so a non-empty comments table means seed.py already ran — skip it.
+# This stops restarts from re-seeding. seed.py also refuses to run when
+# APP_ENV=production, so prod is guarded twice. `exec` hands PID 1 to run_etl.sh
+# so it receives stop signals.
+CMD ["bash", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then if python -c \"import sys; from sqlalchemy import text; from utils import get_engine; sys.exit(1 if get_engine().connect().execute(text('SELECT count(*) FROM comments')).scalar() else 0)\"; then echo 'seeding sample data'; python scripts/seed.py; else echo 'already seeded; skipping'; fi; fi; exec bash scripts/run_etl.sh"]
