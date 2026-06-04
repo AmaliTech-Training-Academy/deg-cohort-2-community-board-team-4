@@ -1,50 +1,45 @@
 """
-Analytics dataset export for CommunityBoard.
+Analytics load for CommunityBoard.
 
-Runs read-only queries against the live application tables and writes each
-result as a JSON flat file for the dashboard frontend to consume:
+Runs read-only queries against the live application tables and loads each
+result into a table under the ``analytics`` schema for the dashboard to read:
 
-  - totals.json              : total posts, comments, and users
-  - posts_per_category.json  : post count per category (NEWS/EVENT/DISCUSSION/ALERT)
-  - posts_per_day.json       : post count per day over the last N days (gap-filled)
-  - top_contributors.json    : top N users by post count
+  - analytics.summary            : total posts, comments, and users
+  - analytics.category_counts    : post count per category
+  - analytics.daily_post_counts  : post count per day over the last N days (gap-filled)
+  - analytics.top_users          : top N users by post count
 
-Each file has the shape::
-
-    {"generated_at": "<iso8601 utc>", "count": <n>, "data": [ ... ]}
-
-Files are written atomically (temp file + os.replace) so the frontend never
-reads a half-written file.
+Each load is a full refresh inside one transaction: the schema and tables are
+created if missing, every target table is truncated, and the freshly computed
+rows are inserted with a shared ``generated_at`` UTC timestamp. The data volume
+is tiny, so a truncate-and-reload is simpler and safer than incremental upserts.
 
 Usage::
 
-    python analytics.py                       # 30 days, top 5, default output dir
+    python analytics.py                       # 30 days, top 5
     python analytics.py --days 7 --top 10
-    python analytics.py --output-dir /data/analytics
 
-DB credentials come from .env (via the config package). Output dir defaults to
-ANALYTICS_OUTPUT_DIR (config), overridable with --output-dir.
+DB credentials come from .env (via the config package).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
-import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from config import ANALYTICS_OUTPUT_DIR, SEED
+from config import SEED
 from utils import dispose_engine, get_engine, get_logger
 
 logger = get_logger("analytics")
 
 DEFAULT_DAYS = SEED.get("trend_window_days", 30)
 DEFAULT_TOP = 5
+
+ANALYTICS_SCHEMA = "analytics"
 
 
 # --------------------------------------------------------------------------- #
@@ -89,7 +84,7 @@ def posts_per_day(conn: Connection, days: int = DEFAULT_DAYS) -> list[dict]:
     today = datetime.now(timezone.utc).date()
     start = today - timedelta(days=days - 1)
     return [
-        {"day": (d := start + timedelta(days=i)).isoformat(), "post_count": counts.get(d, 0)}
+        {"day": (d := start + timedelta(days=i)), "post_count": counts.get(d, 0)}
         for i in range(days)
     ]
 
@@ -111,7 +106,7 @@ def top_contributors(conn: Connection, limit: int = DEFAULT_TOP) -> list[dict]:
     ).all()
     return [
         {
-            "id": int(r.id),
+            "user_id": int(r.id),
             "name": r.name,
             "email": r.email,
             "post_count": int(r.post_count),
@@ -142,55 +137,90 @@ def totals(conn: Connection) -> list[dict]:
 
 
 # --------------------------------------------------------------------------- #
-# JSON export
+# Analytics schema (target tables). Created if missing; matches the agreed DDL.
 # --------------------------------------------------------------------------- #
-def _envelope(records: list[dict]) -> dict:
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "count": len(records),
-        "data": records,
-    }
+SCHEMA_SQL = f"""
+CREATE SCHEMA IF NOT EXISTS {ANALYTICS_SCHEMA};
+
+CREATE TABLE IF NOT EXISTS {ANALYTICS_SCHEMA}.category_counts (
+    id           BIGSERIAL PRIMARY KEY,
+    category     VARCHAR(255) NOT NULL,
+    post_count   INTEGER      NOT NULL,
+    generated_at TIMESTAMP    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS {ANALYTICS_SCHEMA}.daily_post_counts (
+    id           BIGSERIAL PRIMARY KEY,
+    day          DATE      NOT NULL,
+    post_count   INTEGER   NOT NULL,
+    generated_at TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_daily_post_counts_day
+    ON {ANALYTICS_SCHEMA}.daily_post_counts (day);
+
+CREATE TABLE IF NOT EXISTS {ANALYTICS_SCHEMA}.top_users (
+    id           BIGSERIAL PRIMARY KEY,
+    user_id      BIGINT       NOT NULL,
+    name         VARCHAR(255) NOT NULL,
+    email        VARCHAR(255) NOT NULL,
+    post_count   INTEGER      NOT NULL,
+    generated_at TIMESTAMP    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS {ANALYTICS_SCHEMA}.summary (
+    id             BIGSERIAL PRIMARY KEY,
+    total_posts    INTEGER   NOT NULL,
+    total_comments INTEGER   NOT NULL,
+    total_users    INTEGER   NOT NULL,
+    generated_at   TIMESTAMP NOT NULL
+);
+"""
+
+# Target table -> ordered column list (excludes id/generated_at, added by loader).
+# Keys must match the dicts returned by the query above.
+LOAD_COLUMNS = {
+    "category_counts": ["category", "post_count"],
+    "daily_post_counts": ["day", "post_count"],
+    "top_users": ["user_id", "name", "email", "post_count"],
+    "summary": ["total_posts", "total_comments", "total_users"],
+}
 
 
-def export_json(records: list[dict], filename: str, output_dir: Path) -> Path:
-    """Write `records` (wrapped in an envelope) to output_dir/filename atomically."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    final = output_dir / filename
-    tmp = final.with_suffix(final.suffix + ".tmp")
+def _load_table(conn: Connection, table: str, records: list[dict], generated_at: datetime) -> None:
+    """Truncate `analytics.<table>` and insert `records`, stamping generated_at."""
+    qualified = f"{ANALYTICS_SCHEMA}.{table}"
+    conn.execute(text(f"TRUNCATE TABLE {qualified} RESTART IDENTITY"))
+    if not records:
+        logger.info("Loaded analytics table (empty)", extra={"table": qualified})
+        return
 
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(_envelope(records), fh, ensure_ascii=False, indent=2, default=str)
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(tmp, final)  # atomic on POSIX
-
-    logger.info("Wrote analytics file", extra={"rows": len(records), "path": str(final)})
-    return final
+    cols = LOAD_COLUMNS[table]
+    all_cols = [*cols, "generated_at"]
+    placeholders = ", ".join(f":{c}" for c in all_cols)
+    stmt = text(f"INSERT INTO {qualified} ({', '.join(all_cols)}) VALUES ({placeholders})")
+    conn.execute(stmt, [{**r, "generated_at": generated_at} for r in records])
+    logger.info("Loaded analytics table", extra={"rows": len(records), "table": qualified})
 
 
 # --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
-def run_export(engine: Engine, days: int, limit: int, output_dir: Path) -> None:
-    """Run all queries on one connection and export their JSON files."""
-    with engine.connect() as conn:
-        export_json(totals(conn), "totals.json", output_dir)
-        export_json(posts_per_category(conn), "posts_per_category.json", output_dir)
-        export_json(posts_per_day(conn, days), "posts_per_day.json", output_dir)
-        export_json(top_contributors(conn, limit), "top_contributors.json", output_dir)
-    logger.info("Analytics export complete", extra={"output_dir": str(output_dir)})
+def run_load(engine: Engine, days: int, limit: int) -> None:
+    """Compute all datasets and load them into the analytics schema (one txn)."""
+    generated_at = datetime.now(timezone.utc)
+    with engine.begin() as conn:  # all-or-nothing: schema, truncates, inserts
+        conn.execute(text(SCHEMA_SQL))
+        _load_table(conn, "summary", totals(conn), generated_at)
+        _load_table(conn, "category_counts", posts_per_category(conn), generated_at)
+        _load_table(conn, "daily_post_counts", posts_per_day(conn, days), generated_at)
+        _load_table(conn, "top_users", top_contributors(conn, limit), generated_at)
+    logger.info("Analytics load complete", extra={"generated_at": generated_at.isoformat()})
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export CommunityBoard analytics as JSON.")
+    parser = argparse.ArgumentParser(description="Load CommunityBoard analytics into the DB.")
     parser.add_argument("--days", type=int, default=DEFAULT_DAYS, help="Trend window in days.")
     parser.add_argument("--top", type=int, default=DEFAULT_TOP, help="Number of top contributors.")
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=ANALYTICS_OUTPUT_DIR,
-        help="Directory to write JSON files into.",
-    )
     return parser.parse_args(argv)
 
 
@@ -198,12 +228,9 @@ def main() -> None:
     args = parse_args()
     engine = get_engine()
     try:
-        run_export(engine, args.days, args.top, args.output_dir)
+        run_load(engine, args.days, args.top)
     except SQLAlchemyError:
-        logger.error("Analytics export failed (database error)", exc_info=True)
-        raise SystemExit(1)
-    except OSError:
-        logger.error("Analytics export failed (file write error)", exc_info=True)
+        logger.error("Analytics load failed (database error)", exc_info=True)
         raise SystemExit(1)
     finally:
         dispose_engine()

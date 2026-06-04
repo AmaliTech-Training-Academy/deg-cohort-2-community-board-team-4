@@ -10,10 +10,10 @@ public class PostsDataProvider {
     public Object[][] createPostAllCategories() {
         String timestamp = String.valueOf(System.currentTimeMillis());
         return new Object[][] {
-                { "{\"title\": \"General Post " + timestamp + "_1\", \"content\": \"General content\", \"categoryId\": 1}" },
-                { "{\"title\": \"Events Post " + timestamp + "_2\", \"content\": \"Events content\", \"categoryId\": 2}" },
-                { "{\"title\": \"Tech Post " + timestamp + "_3\", \"content\": \"Tech content\", \"categoryId\": 3}" },
-                { "{\"title\": \"Help Post " + timestamp + "_4\", \"content\": \"Help content\", \"categoryId\": 4}" }
+                { "{\"title\": \"News Post " + timestamp + "_1\", \"content\": \"News content\", \"categoryId\": 1}" },
+                { "{\"title\": \"Event Post " + timestamp + "_2\", \"content\": \"Event content\", \"categoryId\": 2}" },
+                { "{\"title\": \"Discussion Post " + timestamp + "_3\", \"content\": \"Discussion content\", \"categoryId\": 3}" },
+                { "{\"title\": \"Alert Post " + timestamp + "_4\", \"content\": \"Alert content\", \"categoryId\": 4}" }
         };
     }
 
