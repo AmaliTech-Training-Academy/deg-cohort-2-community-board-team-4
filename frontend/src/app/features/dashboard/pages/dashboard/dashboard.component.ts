@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,13 +13,16 @@ import { Post, Category } from '../../../../core/models/post.interface';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private postService = inject(PostService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
   currentUser = this.authService.currentUser;
+
+  ticker = signal<number>(0);
+  private tickerIntervalId: any;
 
   categories = signal<Category[]>([]);
   posts = signal<Post[]>([]);
@@ -67,6 +70,15 @@ export class DashboardComponent implements OnInit {
       this.categories.set(cats);
     });
     this.loadPosts();
+    this.tickerIntervalId = setInterval(() => {
+      this.ticker.update(n => n + 1);
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.tickerIntervalId) {
+      clearInterval(this.tickerIntervalId);
+    }
   }
 
   loadPosts(): void {
@@ -198,16 +210,30 @@ export class DashboardComponent implements OnInit {
   }
 
   getRelativeTime(dateStr: string): string {
-    const date = new Date(dateStr);
+    this.ticker();
+
+    if (!dateStr) return '';
+    let sanitizedDateStr = dateStr;
+    if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !/-\d{2}:\d{2}$/.test(dateStr)) {
+      sanitizedDateStr = dateStr + 'Z';
+    }
+
+    const date = new Date(sanitizedDateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `about ${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `about ${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMs < 2000) return 'just now';
+
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   }
 }
