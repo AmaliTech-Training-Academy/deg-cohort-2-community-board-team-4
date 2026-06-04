@@ -96,7 +96,7 @@ class TestResetTables:
         assert "RESTART IDENTITY" in str(call_args)
 
     def test_truncates_correct_tables(self):
-        """Should truncate comments, posts, categories, users."""
+        """Should truncate comments, posts, users — but NOT categories."""
         mock_conn = MagicMock()
         reset_tables(mock_conn)
 
@@ -104,52 +104,60 @@ class TestResetTables:
         sql = str(call_args)
         assert "comments" in sql
         assert "posts" in sql
-        assert "categories" in sql
         assert "users" in sql
+        # Categories are provisioned outside the seeder, never truncated.
+        assert "categories" not in sql
 
 
 class TestSeedCategories:
-    """Tests for seed_categories() function."""
+    """Tests for seed_categories() function (lookup-only, no insert)."""
 
     def test_returns_list_of_ids(self):
-        """Should return a list of inserted category IDs."""
+        """Should return the ids of existing categories."""
         mock_conn = MagicMock()
         mock_result = MagicMock()
         mock_result.id = 1
 
-        mock_conn.execute.return_value.one.return_value = mock_result
+        mock_conn.execute.return_value.one_or_none.return_value = mock_result
 
         ids = seed_categories(mock_conn)
 
         assert isinstance(ids, list)
         assert len(ids) == len(CATEGORIES)
 
-    def test_inserts_all_categories(self):
-        """Should insert all categories from config."""
+    def test_looks_up_each_category(self):
+        """Should query once per configured category."""
         mock_conn = MagicMock()
         mock_result = MagicMock()
         mock_result.id = 1
 
-        mock_conn.execute.return_value.one.return_value = mock_result
+        mock_conn.execute.return_value.one_or_none.return_value = mock_result
 
         ids = seed_categories(mock_conn)
 
-        # Should call execute once per category
         assert mock_conn.execute.call_count == len(CATEGORIES)
         assert len(ids) == len(CATEGORIES)
 
-    def test_upsert_on_conflict(self):
-        """Should use ON CONFLICT to handle duplicate inserts."""
+    def test_selects_not_inserts(self):
+        """Should SELECT existing rows, never INSERT."""
         mock_conn = MagicMock()
         mock_result = MagicMock()
         mock_result.id = 1
-        mock_conn.execute.return_value.one.return_value = mock_result
+        mock_conn.execute.return_value.one_or_none.return_value = mock_result
 
         seed_categories(mock_conn)
 
-        call_args = mock_conn.execute.call_args_list[0][0][0]
-        sql = str(call_args)
-        assert "ON CONFLICT" in sql
+        sql = str(mock_conn.execute.call_args_list[0][0][0])
+        assert "SELECT" in sql
+        assert "INSERT" not in sql
+
+    def test_raises_when_category_missing(self):
+        """Should error out if a configured category is absent in the DB."""
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.one_or_none.return_value = None
+
+        with pytest.raises(SystemExit):
+            seed_categories(mock_conn)
 
 
 class TestSeedUsers:
