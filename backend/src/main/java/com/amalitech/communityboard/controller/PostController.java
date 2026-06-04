@@ -4,7 +4,9 @@ import com.amalitech.communityboard.dto.*;
 import com.amalitech.communityboard.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +23,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
+@Validated
 public class PostController {
 
     private final PostService postService;
@@ -55,27 +59,38 @@ public class PostController {
 
     @Operation(
             summary = "Create a post",
-            description = "Creates a post from multipart/form-data. The image part is required."
+            description = "Creates a post from multipart/form-data. Send title, content, categoryId and "
+                    + "the image as separate form fields. The image is required."
     )
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
-            @Valid @ModelAttribute PostRequest request,
-            @RequestParam("image") MultipartFile image,
+            @RequestParam(value = "title", required = false)
+            @NotBlank @Size(max = 255, message = "Title must be at most 255 characters") String title,
+            @RequestParam(value = "content", required = false) @NotBlank String content,
+            @RequestParam(value = "categoryId", required = false)
+            @NotNull(message = "categoryId is required") Long categoryId,
+            @RequestParam(value = "image", required = false) MultipartFile image,
             @AuthenticationPrincipal Long userId) {
+        PostRequest request = new PostRequest(title, content, categoryId);
         return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(request, image, userId));
     }
 
     @Operation(
             summary = "Update a post",
-            description = "Updates a post from multipart/form-data. The image part is optional; "
-                    + "when omitted the existing image is kept."
+            description = "Updates a post from multipart/form-data. Send title, content and categoryId as "
+                    + "separate form fields. The image is optional; when omitted the existing image is kept."
     )
     @PutMapping(path = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
-            @Valid @ModelAttribute PostRequest request,
+            @RequestParam(value = "title", required = false)
+            @NotBlank @Size(max = 255, message = "Title must be at most 255 characters") String title,
+            @RequestParam(value = "content", required = false) @NotBlank String content,
+            @RequestParam(value = "categoryId", required = false)
+            @NotNull(message = "categoryId is required") Long categoryId,
             @RequestParam(value = "image", required = false) MultipartFile image,
             @AuthenticationPrincipal Long userId) {
+        PostRequest request = new PostRequest(title, content, categoryId);
         return ResponseEntity.ok(postService.updatePost(id, request, image, userId));
     }
 
