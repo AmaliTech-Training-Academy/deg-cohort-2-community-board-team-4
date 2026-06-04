@@ -30,6 +30,7 @@ export class DashboardComponent implements OnInit {
   isCreateModalOpen = signal<boolean>(false);
   isSubmittingPost = signal<boolean>(false);
   postError = signal<string>('');
+  selectedCategoryIdForPost = signal<number | null>(null);
 
   postForm: FormGroup = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(255)]],
@@ -40,7 +41,7 @@ export class DashboardComponent implements OnInit {
   isDropdownOpen = signal<boolean>(false);
 
   selectedCategoryName = computed(() => {
-    const id = this.postForm.get('categoryId')?.value;
+    const id = this.selectedCategoryIdForPost();
     if (!id) return 'Select';
     const cat = this.categories().find(c => c.id === Number(id));
     return cat ? (cat.name === 'Event' ? 'Events' : cat.name) : 'Select';
@@ -132,6 +133,7 @@ export class DashboardComponent implements OnInit {
     this.isCreateModalOpen.set(true);
     this.postError.set('');
     this.isDropdownOpen.set(false);
+    this.selectedCategoryIdForPost.set(null);
     this.postForm.reset({ title: '', categoryId: '', content: '' });
   }
 
@@ -140,17 +142,31 @@ export class DashboardComponent implements OnInit {
     this.isCreateModalOpen.set(false);
     this.postError.set('');
     this.isDropdownOpen.set(false);
+    this.selectedCategoryIdForPost.set(null);
     this.postForm.reset();
+  }
+
+  closeDropdown(): void {
+    if (this.isDropdownOpen()) {
+      this.isDropdownOpen.set(false);
+      this.postForm.get('categoryId')?.markAsTouched();
+    }
   }
 
   toggleDropdown(event: Event): void {
     event.stopPropagation();
-    this.isDropdownOpen.update(v => !v);
+    if (this.isDropdownOpen()) {
+      this.isDropdownOpen.set(false);
+      this.postForm.get('categoryId')?.markAsTouched();
+    } else {
+      this.isDropdownOpen.set(true);
+    }
   }
 
   selectCategory(categoryId: number): void {
     this.postForm.get('categoryId')?.setValue(categoryId);
     this.postForm.get('categoryId')?.markAsTouched();
+    this.selectedCategoryIdForPost.set(categoryId);
     this.isDropdownOpen.set(false);
   }
 
@@ -167,6 +183,7 @@ export class DashboardComponent implements OnInit {
         this.isSubmittingPost.set(false);
         this.isCreateModalOpen.set(false);
         this.postForm.reset();
+        this.selectedCategoryIdForPost.set(null);
         
         this.selectedCategoryId.set(undefined);
         this.searchQuery.set('');

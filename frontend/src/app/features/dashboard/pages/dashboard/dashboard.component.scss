@@ -976,6 +976,11 @@
     background-color: var(--color-white, #ffffff);
   }
 
+  &.has-error {
+    border-color: var(--color-error, #ef4444);
+    background-color: var(--color-error-bg, #fef2f2);
+  }
+
   .chevron-icon {
     display: flex;
     align-items: center;

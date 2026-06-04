@@ -228,7 +228,7 @@
   <!-- Create Post Modal -->
   @if (isCreateModalOpen()) {
     <div class="modal-overlay" (click)="closeCreateModal()">
-      <div class="modal-card" (click)="isDropdownOpen.set(false); $event.stopPropagation()">
+      <div class="modal-card" (click)="closeDropdown(); $event.stopPropagation()">
         
         <header class="modal-header">
           <div class="mobile-breadcrumbs mobile-only">
@@ -276,6 +276,7 @@
                 type="button" 
                 class="custom-select-trigger" 
                 [class.open]="isDropdownOpen()"
+                [class.has-error]="postForm.get('categoryId')?.touched && postForm.get('categoryId')?.invalid"
                 (click)="toggleDropdown($event)"
               >
                 <span>{{ selectedCategoryName() }}</span>
@@ -294,7 +295,7 @@
                     <button 
                       type="button"
                       class="custom-select-option" 
-                      [class.selected]="postForm.get('categoryId')?.value === category.id"
+                      [class.selected]="selectedCategoryIdForPost() === category.id"
                       (click)="selectCategory(category.id)"
                     >
                       {{ category.name === 'Event' ? 'Events' : category.name }}
