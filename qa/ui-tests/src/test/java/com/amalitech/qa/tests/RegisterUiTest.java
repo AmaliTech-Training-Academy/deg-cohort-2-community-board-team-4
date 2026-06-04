@@ -4,6 +4,9 @@ import com.amalitech.qa.base.UIBaseTest;
 import com.amalitech.qa.pages.RegisterPage;
 import com.amalitech.qa.providers.RegisterDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
@@ -11,6 +14,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Feature("Registration")
 public class RegisterUiTest extends UIBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(RegisterUiTest.class);
@@ -30,6 +34,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Register page loads with correct heading
+    @Severity(SeverityLevel.MINOR)
     @Test(dataProvider = "registerPageTitle", dataProviderClass = RegisterDataProvider.class)
     public void testRegisterPageLoads(String expectedTitle) {
         log.info("Verifying register page loads correctly");
@@ -38,6 +43,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Successful registration auto-logs in and redirects to dashboard
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "successfulRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testSuccessfulRegistration(String fullName, String password, String confirmPassword) {
         log.info("Testing successful registration with valid data");
@@ -48,6 +54,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Empty full name shows error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "emptyFullNameRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testEmptyFullNameShowsError(String password, String confirmPassword) {
         log.info("Testing registration with empty full name");
@@ -60,6 +67,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Empty email shows error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "emptyEmailRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testEmptyEmailShowsError(String fullName, String password, String confirmPassword) {
         log.info("Testing registration with empty email");
@@ -72,6 +80,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Invalid email format shows error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "invalidEmailRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testInvalidEmailShowsError(String fullName, String email, String password, String confirmPassword) {
         log.info("Testing registration with invalid email format");
@@ -85,6 +94,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Short password (under 6 chars) shows error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "shortPasswordRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testShortPasswordShowsError(String fullName, String password, String confirmPassword) {
         log.info("Testing registration with password under 6 characters");
@@ -98,6 +108,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Mismatched passwords show confirm password error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "mismatchedPasswordsRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testMismatchedPasswordsShowsError(String fullName, String password, String confirmPassword) {
         log.info("Testing registration with mismatched passwords");
@@ -111,6 +122,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Duplicate email — stays on register page
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "duplicateEmailRegistration", dataProviderClass = RegisterDataProvider.class)
     public void testDuplicateEmailStaysOnRegisterPage(String fullName, String password, String confirmPassword) {
         log.info("Testing registration with already-used email");
@@ -126,6 +138,7 @@ public class RegisterUiTest extends UIBaseTest {
     }
 
     // ✅ Login link navigates back to login page
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testLoginLinkNavigatesToLogin() {
         log.info("Testing login link on register page");

@@ -7,6 +7,9 @@ import com.amalitech.qa.pages.PostDetailPage;
 import com.amalitech.qa.providers.PostDetailDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
 import com.amalitech.qa.utils.JsonDataReader;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeClass;
@@ -15,6 +18,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Feature("Post Detail")
 public class PostDetailUiTest extends UIBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(PostDetailUiTest.class);
@@ -61,6 +65,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Post detail page loads with all content visible
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testPostDetailLoads() {
         log.info("Verifying post detail page loads with content");
@@ -72,6 +77,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Breadcrumb shows "Post Details" as the current page
+    @Severity(SeverityLevel.MINOR)
     @Test(dataProvider = "breadcrumbText", dataProviderClass = PostDetailDataProvider.class)
     public void testBreadcrumbShowsPostDetails(String expectedText) {
         log.info("Verifying breadcrumb shows 'Post Details'");
@@ -80,6 +86,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Home breadcrumb navigates back to the dashboard
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testBreadcrumbHomeNavigatesToDashboard() {
         log.info("Verifying home breadcrumb navigates to dashboard");
@@ -89,6 +96,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Submit button is disabled when the comment textarea is empty
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testCommentSubmitDisabledWhenEmpty() {
         log.info("Verifying submit is disabled with empty comment textarea");
@@ -97,6 +105,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Submit button becomes enabled after typing a comment
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "testComment", dataProviderClass = PostDetailDataProvider.class)
     public void testCommentSubmitEnabledWhenFilled(String comment) {
         log.info("Verifying submit enables after typing a comment");
@@ -106,6 +115,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Submitting a comment increases the comment count and shows the new comment
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "addCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
     public void testAddComment(String commentPrefix) {
         log.info("Testing that submitting a comment adds it to the list");
@@ -120,6 +130,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Clicking the edit icon shows the inline editor with the comment's current text
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testEditCommentShowsEditor() {
         log.info("Verifying clicking edit shows the inline comment editor");
@@ -129,6 +140,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Clicking cancel on the inline editor hides it without changes
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testEditCommentCancel() {
         log.info("Verifying cancel closes the inline edit editor");
@@ -139,6 +151,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Editing and saving a comment updates the displayed text
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "editCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
     public void testEditCommentSave(String editPrefix) {
         log.info("Verifying edit and save updates the comment text");
@@ -153,6 +166,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Clicking delete shows the confirmation modal
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testDeleteCommentModalAppears() {
         log.info("Verifying delete button opens the confirmation modal");
@@ -163,6 +177,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Cancelling the delete modal leaves the comment intact
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testDeleteCommentModalCancel() {
         log.info("Verifying cancel in delete modal keeps the comment count unchanged");
@@ -174,6 +189,7 @@ public class PostDetailUiTest extends UIBaseTest {
     }
 
     // ✅ Confirming delete removes the comment from the list (runs last)
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 99, dataProvider = "deleteCommentPrefix", dataProviderClass = PostDetailDataProvider.class)
     public void testDeleteCommentConfirm(String commentPrefix) {
         log.info("Verifying confirming delete removes the comment");

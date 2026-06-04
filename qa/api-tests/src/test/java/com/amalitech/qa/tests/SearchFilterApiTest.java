@@ -2,6 +2,9 @@ package com.amalitech.qa.tests;
 
 import com.amalitech.qa.base.BaseTest;
 import com.amalitech.qa.dataProviders.SearchFilterDataProvider;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import io.restassured.http.ContentType;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -10,6 +13,7 @@ import org.testng.annotations.Test;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
+@Feature("Search and Filter")
 public class SearchFilterApiTest extends BaseTest {
 
     private String keyword1;
@@ -21,7 +25,6 @@ public class SearchFilterApiTest extends BaseTest {
     public void createPostsForSearch() {
         String timestamp = String.valueOf(System.currentTimeMillis());
 
-        // create post 1 and store unique keyword
         keyword1 = "SearchKeyword_" + timestamp + "_1";
         postId1 = given()
                 .contentType(ContentType.JSON)
@@ -32,9 +35,8 @@ public class SearchFilterApiTest extends BaseTest {
                 .then()
                 .statusCode(201).extract().path("id");
 
-        // create post 2 and store unique keyword
         keyword2 = "SearchKeyword_" + timestamp + "_2";
-        postId2  = given()
+        postId2 = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + adminToken)
                 .body("{\"title\": \"" + keyword2 + "\", \"content\": \"Another content for search\", \"categoryId\": 2}")
@@ -46,7 +48,6 @@ public class SearchFilterApiTest extends BaseTest {
 
     @AfterClass(alwaysRun = true)
     public void deletePostsForSearch() {
-        // delete post 1
         given()
                 .header("Authorization", "Bearer " + adminToken)
                 .when()
@@ -55,7 +56,6 @@ public class SearchFilterApiTest extends BaseTest {
                 .log().ifValidationFails()
                 .statusCode(204);
 
-        // delete post 2
         given()
                 .header("Authorization", "Bearer " + adminToken)
                 .when()
@@ -63,11 +63,10 @@ public class SearchFilterApiTest extends BaseTest {
                 .then()
                 .log().ifValidationFails()
                 .statusCode(204);
-        System.out.println("This is the end");
     }
 
-
     // ✅ Get all posts — no filters
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testGetAllPostsNoFilter() {
         given()
@@ -83,6 +82,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by valid category (runs 4 times)
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "validCategory", dataProviderClass = SearchFilterDataProvider.class)
     public void testFilterByCategory(String category) {
         given()
@@ -98,6 +98,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by category — case insensitive (runs 3 times)
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "caseInsensitiveCategory", dataProviderClass = SearchFilterDataProvider.class)
     public void testFilterByCategoryCaseInsensitive(String category) {
         given()
@@ -112,6 +113,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by invalid category — empty results
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testFilterByInvalidCategory() {
         given()
@@ -128,6 +130,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Search by valid keyword (runs twice)
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "validKeyword", dataProviderClass = SearchFilterDataProvider.class)
     public void testSearchByKeyword(String keyword) {
         given()
@@ -143,6 +146,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Search by keyword — case insensitive (runs 3 times)
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "caseInsensitiveKeyword", dataProviderClass = SearchFilterDataProvider.class)
     public void testSearchByKeywordCaseInsensitive(String keyword) {
         given()
@@ -157,6 +161,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Search by keyword — no results
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testSearchByKeywordNoResults() {
         given()
@@ -173,6 +178,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by date range — valid
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testFilterByDateRange() {
         given()
@@ -189,6 +195,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by date range — no results
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testFilterByDateRangeNoResults() {
         given()
@@ -206,6 +213,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Filter by invalid date format → 400
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testFilterByInvalidDateFormat() {
         given()
@@ -220,6 +228,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Combined filters — category + keyword
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testCombinedCategoryAndKeyword() {
         given()
@@ -236,6 +245,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Combined filters — category + date range
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testCombinedCategoryAndDateRange() {
         given()
@@ -252,6 +262,7 @@ public class SearchFilterApiTest extends BaseTest {
     }
 
     // ✅ Pagination — valid page size (runs 3 times)
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "validPageSize", dataProviderClass = SearchFilterDataProvider.class)
     public void testPaginationValidPageSize(int size) {
         given()
@@ -267,8 +278,8 @@ public class SearchFilterApiTest extends BaseTest {
                 .body("number", equalTo(0));
     }
 
-
     // ✅ Pagination — second page
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testPaginationSecondPage() {
         given()

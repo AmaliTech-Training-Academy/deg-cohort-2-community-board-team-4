@@ -7,6 +7,9 @@ import com.amalitech.qa.providers.DashboardDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
 import com.amalitech.qa.utils.DriverManager;
 import com.amalitech.qa.utils.JsonDataReader;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.slf4j.Logger;
@@ -17,6 +20,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Feature("Dashboard")
 public class DashboardUiTest extends UIBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardUiTest.class);
@@ -51,6 +55,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Dashboard loads with posts visible
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testDashboardLoads() {
         log.info("Verifying dashboard loads with posts");
@@ -59,6 +64,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Logged-in user name and email are displayed
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "expectedUserName", dataProviderClass = DashboardDataProvider.class)
     public void testUserDetailsDisplayed(String expectedUserName) {
         log.info("Verifying user details are shown in header");
@@ -67,6 +73,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Posts are listed on the dashboard
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testPostsAreVisible() {
         log.info("Verifying posts are listed");
@@ -74,6 +81,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Search by keyword filters posts
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "searchKeyword", dataProviderClass = DashboardDataProvider.class)
     public void testSearchFiltersResults(String keyword) {
         log.info("Testing search filters posts by keyword");
@@ -89,6 +97,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Search with no results shows empty state
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "noResultsSearchKeyword", dataProviderClass = DashboardDataProvider.class)
     public void testSearchNoResults(String keyword) {
         log.info("Testing search with a term that matches nothing");
@@ -97,6 +106,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Category filter — click 'news' shows only news posts
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "newsCategoryFilter", dataProviderClass = DashboardDataProvider.class)
     public void testCategoryFilterNews(String category) {
         log.info("Testing category filter for 'news'");
@@ -107,6 +117,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ 'All' category shows all posts
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "allCategoryFilter", dataProviderClass = DashboardDataProvider.class)
     public void testCategoryFilterAll(String newsCategory, String allCategory) {
         log.info("Testing 'All' category shows all posts");
@@ -117,6 +128,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Create post modal opens on button click
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testCreatePostModalOpens() {
         log.info("Testing create post modal opens");
@@ -125,6 +137,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Create post modal cancel closes it
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testCreatePostModalCancel() {
         log.info("Testing create post modal can be cancelled");
@@ -134,6 +147,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Create a post successfully
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "newPostData", dataProviderClass = DashboardDataProvider.class)
     public void testCreatePostSuccess(String titlePrefix, String body) {
         log.info("Testing creating a new post");
@@ -150,6 +164,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Pagination — next page advances the page number
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "paginationData", dataProviderClass = DashboardDataProvider.class)
     public void testPaginationNextPage(String initialPage, String nextPage) {
         log.info("Testing pagination next page");
@@ -160,6 +175,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ First page has Previous button disabled
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testPaginationPreviousDisabledOnFirstPage() {
         log.info("Testing Previous button is disabled on first page");
@@ -168,6 +184,7 @@ public class DashboardUiTest extends UIBaseTest {
     }
 
     // ✅ Logout redirects to login
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 99)
     public void testLogoutRedirectsToLogin() {
         log.info("Testing logout redirects to login page");

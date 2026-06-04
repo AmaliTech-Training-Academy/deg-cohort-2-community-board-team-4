@@ -4,6 +4,9 @@ import com.amalitech.qa.base.UIBaseTest;
 import com.amalitech.qa.pages.LoginPage;
 import com.amalitech.qa.providers.LoginDataProvider;
 import com.amalitech.qa.utils.ConfigReader;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
@@ -11,6 +14,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Feature("Login")
 public class LoginUiTest extends UIBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(LoginUiTest.class);
@@ -25,6 +29,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Login page loads with correct heading
+    @Severity(SeverityLevel.MINOR)
     @Test(dataProvider = "loginPageTitle", dataProviderClass = LoginDataProvider.class)
     public void testLoginPageLoads(String expectedTitle) {
         log.info("Verifying login page loads correctly");
@@ -33,6 +38,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Successful login redirects to dashboard
+    @Severity(SeverityLevel.BLOCKER)
     @Test
     public void testSuccessfulLogin() {
         log.info("Testing successful login with admin credentials");
@@ -46,6 +52,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Invalid email format shows email error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "invalidEmailLogin", dataProviderClass = LoginDataProvider.class)
     public void testInvalidEmailShowsError(String email, String password) {
         log.info("Testing login with invalid email format");
@@ -57,6 +64,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Empty email shows email required error
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "emptyEmailLogin", dataProviderClass = LoginDataProvider.class)
     public void testEmptyEmailShowsError(String password) {
         log.info("Testing login with empty email");
@@ -67,6 +75,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Empty password shows password required error
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testEmptyPasswordShowsError() {
         log.info("Testing login with empty password");
@@ -77,6 +86,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Wrong credentials — stays on login page
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "wrongCredentialsLogin", dataProviderClass = LoginDataProvider.class)
     public void testWrongCredentialsStaysOnLoginPage(String email, String password) {
         log.info("Testing login with wrong credentials");
@@ -86,6 +96,7 @@ public class LoginUiTest extends UIBaseTest {
     }
 
     // ✅ Register link navigates to register page
+    @Severity(SeverityLevel.MINOR)
     @Test
     public void testRegisterLinkNavigatesToRegister() {
         log.info("Testing register link on login page");

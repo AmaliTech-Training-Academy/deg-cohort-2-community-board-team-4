@@ -2,6 +2,9 @@ package com.amalitech.qa.tests;
 
 import com.amalitech.qa.base.BaseTest;
 import com.amalitech.qa.dataProviders.CommentsDataProvider;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import io.restassured.http.ContentType;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -10,6 +13,7 @@ import org.testng.annotations.Test;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
+@Feature("Comments")
 public class CommentsApiTest extends BaseTest {
 
     private int commentId;
@@ -25,14 +29,11 @@ public class CommentsApiTest extends BaseTest {
                 .when()
                 .post("/posts")
                 .then()
-//                .statusCode(200)
                 .extract().path("id");
-
     }
 
     @BeforeMethod(alwaysRun = true)
     public void createComment() {
-        //created by admin
         commentId = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + adminToken)
@@ -40,9 +41,8 @@ public class CommentsApiTest extends BaseTest {
                 .when()
                 .post("/posts/" + commentPostId + "/comments")
                 .then()
-//                .statusCode(201)
                 .extract().path("id");
-        //created by user
+
         commentId2 = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + userToken)
@@ -50,12 +50,11 @@ public class CommentsApiTest extends BaseTest {
                 .when()
                 .post("/posts/" + commentPostId + "/comments")
                 .then()
-//                .statusCode(201)
                 .extract().path("id");
-
     }
 
     // ✅ Add comment — valid (runs twice)
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "createCommentValid", dataProviderClass = CommentsDataProvider.class)
     public void testAddCommentValid(String body) {
         given()
@@ -75,6 +74,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ Add comment — invalid (runs 5 times)
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "createCommentInvalid", dataProviderClass = CommentsDataProvider.class)
     public void testAddCommentInvalid(String body) {
         given()
@@ -90,6 +90,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ Add comment — unauthenticated → 401
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testAddCommentNoAuth() {
         given()
@@ -104,6 +105,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ Add comment — invalid post → 404
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testAddCommentInvalidPost() {
         given()
@@ -119,6 +121,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ List comments — check response structure
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testListComments() {
         given()
@@ -136,6 +139,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ List comments — invalid post → 404
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testListCommentsInvalidPost() {
         given()
@@ -147,7 +151,8 @@ public class CommentsApiTest extends BaseTest {
                 .statusCode(404);
     }
 
-    // ✅ Delete comment — non-owner → 403 (runs before owner)
+    // ✅ Delete comment — non-owner → 403
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 1)
     public void testDeleteCommentAsNonOwner() {
         given()
@@ -160,8 +165,8 @@ public class CommentsApiTest extends BaseTest {
                 .statusCode(403);
     }
 
-    // ✅ Delete comment — owner (runs after non-owner)
-    //user deletes his own comment
+    // ✅ Delete comment — owner
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 2)
     public void testDeleteCommentAsOwner() {
         given()
@@ -175,6 +180,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ Delete comment — unauthenticated → 401
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 3)
     public void testDeleteCommentNoAuth() {
         given()
@@ -187,6 +193,7 @@ public class CommentsApiTest extends BaseTest {
     }
 
     // ✅ Delete comment — invalid ID → 404
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testDeleteCommentInvalidId() {
         given()

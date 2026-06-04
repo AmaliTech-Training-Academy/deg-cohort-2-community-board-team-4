@@ -7,6 +7,11 @@
     <artifactId>communityboard-ui-tests</artifactId>
     <version>1.0.0</version>
 
+    <properties>
+        <allure.version>2.27.0</allure.version>
+        <aspectj.version>1.9.22</aspectj.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
@@ -38,6 +43,16 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.16.1</version>
         </dependency>
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+            <version>${allure.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -50,6 +65,18 @@
                     <suiteXmlFiles>
                         <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
                     </suiteXmlFiles>
+                    <argLine>
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>2.12.0</version>
+                <configuration>
+                    <reportVersion>${allure.version}</reportVersion>
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
                 </configuration>
             </plugin>
         </plugins>

@@ -2,18 +2,22 @@ package com.amalitech.qa.tests;
 
 import com.amalitech.qa.base.BaseTest;
 import com.amalitech.qa.dataProviders.PostsDataProvider;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import io.restassured.http.ContentType;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
+@Feature("Posts")
 public class PostsApiTest extends BaseTest {
 
     private int postToDeleteId;
     private int postToGet;
 
-    private void createPostToGet(){
+    private void createPostToGet() {
         postToGet = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + adminToken)
@@ -24,7 +28,9 @@ public class PostsApiTest extends BaseTest {
                 .statusCode(201)
                 .extract().path("id");
     }
+
     // ✅ Create post — all 4 categories (runs 4 times)
+    @Severity(SeverityLevel.CRITICAL)
     @Test(dataProvider = "createPostAllCategories", dataProviderClass = PostsDataProvider.class)
     public void testCreatePostAllCategories(String body) {
         given()
@@ -45,6 +51,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Create post — missing fields → 400 (runs twice)
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "createPostMissingData", dataProviderClass = PostsDataProvider.class)
     public void testCreatePostMissingFields(String body) {
         given()
@@ -59,7 +66,8 @@ public class PostsApiTest extends BaseTest {
                 .statusCode(400);
     }
 
-    // ✅ Create post — missing fields → 400 (runs twice)
+    // ✅ Create post — non-existent category → 404
+    @Severity(SeverityLevel.NORMAL)
     @Test(dataProvider = "createPostWrongData", dataProviderClass = PostsDataProvider.class)
     public void testCreatePostWrongCategory(String body) {
         given()
@@ -75,6 +83,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Create post — no auth → 401
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testCreatePostNoAuth() {
         given()
@@ -89,6 +98,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Get all posts — check pagination structure
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testGetAllPosts() {
         given()
@@ -102,7 +112,6 @@ public class PostsApiTest extends BaseTest {
                 .body("content[0].id", notNullValue())
                 .body("content[0].title", notNullValue())
                 .body("content[0].slug", notNullValue())
-//                .body("content[0].categoryName", notNullValue())
                 .body("content[0].authorName", notNullValue())
                 .body("content[0].authorEmail", notNullValue())
                 .body("totalElements", greaterThan(0))
@@ -111,6 +120,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Get all posts — with page and size params
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testGetAllPostsWithPagination() {
         given()
@@ -128,6 +138,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Get single post
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testGetSinglePost() {
         createPostToGet();
@@ -147,7 +158,9 @@ public class PostsApiTest extends BaseTest {
                 .body("authorEmail", notNullValue())
                 .body("commentCount", notNullValue());
     }
-    // ✅ Get single post — invalid identifier → 404
+
+    // ✅ Get single post — not found → 404
+    @Severity(SeverityLevel.NORMAL)
     @Test
     public void testGetPostNotFound() {
         given()
@@ -160,6 +173,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Update post — owner
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testUpdatePostAsOwner() {
         given()
@@ -177,6 +191,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Update post — non-owner → 403
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testUpdatePostAsNonOwner() {
         given()
@@ -192,6 +207,7 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ Delete post — non-owner → 403
+    @Severity(SeverityLevel.CRITICAL)
     @Test
     public void testDeletePostAsNonOwner() {
         given()
@@ -203,9 +219,6 @@ public class PostsApiTest extends BaseTest {
                 .log().ifValidationFails()
                 .statusCode(403);
     }
-
-
-
 
     private void createPostForDeletion() {
         postToDeleteId = given()
@@ -220,9 +233,10 @@ public class PostsApiTest extends BaseTest {
     }
 
     // ✅ ADMIN can delete any post
+    @Severity(SeverityLevel.CRITICAL)
     @Test(priority = 99)
     public void testDeletePostAsAdmin() {
-        createPostForDeletion();  // ← call it directly inside the test
+        createPostForDeletion();
 
         given()
                 .header("Authorization", "Bearer " + adminToken)
@@ -233,5 +247,4 @@ public class PostsApiTest extends BaseTest {
                 .log().ifValidationFails()
                 .statusCode(204);
     }
-
 }
