@@ -48,9 +48,11 @@ USER app
 # restart policy supervises it.
 #
 # Seeding runs ONLY when RUN_SEED=true (set per-environment in compose, never in
-# prod). It is idempotent: Flyway seeds users/categories/posts but never
-# comments, so a non-empty comments table means seed.py already ran — skip it.
-# This stops restarts from re-seeding. seed.py also refuses to run when
-# APP_ENV=production, so prod is guarded twice. `exec` hands PID 1 to run_etl.sh
-# so it receives stop signals.
-CMD ["bash", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then if python -c \"import sys; from sqlalchemy import text; from utils import get_engine; sys.exit(1 if get_engine().connect().execute(text('SELECT count(*) FROM comments')).scalar() else 0)\"; then echo 'seeding sample data'; python scripts/seed.py; else echo 'already seeded; skipping'; fi; fi; exec bash scripts/run_etl.sh"]
+# prod). It is idempotent via a COUNT THRESHOLD on comments: Flyway's migrations
+# already seed a small number of comments (~couple dozen), and seed.py adds 220
+# more — so "comments < 150" means the bulk Faker seed has NOT run yet. A plain
+# "> 0" check would never seed, because Flyway fills comments first.
+# This stops restarts from re-seeding (after seeding, count is ~245 >= 150).
+# seed.py also refuses to run when APP_ENV=production, so prod is guarded twice.
+# `exec` hands PID 1 to run_etl.sh so it receives stop signals.
+CMD ["bash", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then if python -c \"import sys; from sqlalchemy import text; from utils import get_engine; sys.exit(0 if get_engine().connect().execute(text('SELECT count(*) FROM comments')).scalar() < 220 else 1)\"; then echo 'seeding sample data'; python scripts/seed.py; else echo 'already seeded; skipping'; fi; fi; exec bash scripts/run_etl.sh"]
