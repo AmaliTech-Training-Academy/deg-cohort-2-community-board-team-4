@@ -1,0 +1,74 @@
+<!-- Header -->
+<header class="app-header">
+  <div class="header-content">
+    <div class="logo-wrapper">
+      <img src="assets/images/logo.svg" alt="Ping Logo" class="app-logo">
+    </div>
+
+    <!-- Desktop Header Actions -->
+    <div class="header-actions desktop-only">
+      @if (currentUser()?.role === 'ADMIN') {
+        <a class="nav-link-analytics" routerLink="/dashboard/analytics" routerLinkActive="active">
+          <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+          Analytics
+        </a>
+      }
+
+      <!-- User Profile Card -->
+      <div class="user-profile-card">
+        <div class="avatar-circle">
+          {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+        </div>
+        <div class="user-details">
+          <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
+          <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
+        </div>
+      </div>
+
+      <button class="btn-logout" (click)="onLogout()">
+        <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
+        Log out
+      </button>
+    </div>
+
+    <!-- Mobile Hamburger Button -->
+    <button class="btn-hamburger mobile-only" (click)="toggleMobileMenu()" aria-label="Toggle Menu">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
+  </div>
+</header>
+
+<!-- Mobile Navigation Drawer -->
+@if (isMobileMenuOpen()) {
+  <div class="mobile-drawer-backdrop" (click)="toggleMobileMenu()">
+    <div class="mobile-drawer" (click)="$event.stopPropagation()">
+      <div class="drawer-header">
+        <div class="drawer-user-info">
+          <div class="avatar-circle">
+            {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+          </div>
+          <div class="user-details">
+            <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
+            <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
+          </div>
+        </div>
+        <button class="btn-close-drawer" (click)="toggleMobileMenu()">✕</button>
+      </div>
+
+      <nav class="drawer-nav">
+        @if (currentUser()?.role === 'ADMIN') {
+          <a class="drawer-nav-item" routerLink="/dashboard/analytics">
+            <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
+            Analytics
+          </a>
+        }
+        <button class="btn-drawer-logout" (click)="onLogout(); toggleMobileMenu()">
+          <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
+          Log out
+        </button>
+      </nav>
+    </div>
+  </div>
+}

@@ -66,24 +66,31 @@ def random_datetime(within_days: int = TREND_WINDOW_DAYS) -> datetime:
 
 def reset_tables(conn) -> None:
     """Truncate seeded tables and restart identity sequences."""
-    logger.info("Resetting tables (comments, posts, categories, users)")
-    conn.execute(text("TRUNCATE comments, posts, categories, users " "RESTART IDENTITY CASCADE"))
+    # Categories are NOT truncated — they are provisioned outside the seeder
+    # and posts reference their existing ids.
+    logger.info("Resetting tables (comments, posts, users)")
+    conn.execute(text("TRUNCATE comments, posts, users " "RESTART IDENTITY CASCADE"))
 
 
 def seed_categories(conn) -> list[int]:
+    """Look up existing category ids — do NOT insert.
+
+    Categories are provisioned by the application (migrations/prod data), so
+    seeding only reads their ids to attach posts. Errors out if a configured
+    category is missing rather than silently inventing one.
+    """
     ids: list[int] = []
-    for name, description in CATEGORIES:
+    for name, _description in CATEGORIES:
         row = conn.execute(
-            text(
-                "INSERT INTO categories (name, description) "
-                "VALUES (:name, :description) "
-                "ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description "
-                "RETURNING id"
-            ),
-            {"name": name, "description": description},
-        ).one()
+            text("SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)"),
+            {"name": name},
+        ).one_or_none()
+        if row is None:
+            raise SystemExit(
+                f"Category {name!r} not found in DB. Categories must exist " "before seeding posts."
+            )
         ids.append(row.id)
-    logger.info("Seeded %d categories", len(ids))
+    logger.info("Found %d existing categories", len(ids))
     return ids
 
 

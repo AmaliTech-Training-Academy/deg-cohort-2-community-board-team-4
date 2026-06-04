@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, publicGuard } from './core/guards/auth.guard';
+import { authGuard, publicGuard, adminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -18,8 +18,21 @@ export const routes: Routes = [
       {
         path: 'posts/:id',
         loadComponent: () => import('./features/posts/pages/post-detail/post-detail.component').then(m => m.PostDetailComponent)
+      },
+      {
+        path: 'analytics',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/dashboard/pages/analytics/analytics.component').then(m => m.AnalyticsComponent)
       }
     ]
+  },
+  {
+    path: 'unauthorized',
+    loadComponent: () => import('./features/error/pages/error/error.component').then(m => m.ErrorComponent)
+  },
+  {
+    path: 'not-found',
+    loadComponent: () => import('./features/error/pages/error/error.component').then(m => m.ErrorComponent)
   },
   {
     path: '',
@@ -28,6 +41,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'auth/login'
+    redirectTo: 'not-found'
   }
 ];

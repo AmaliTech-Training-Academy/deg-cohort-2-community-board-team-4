@@ -1,0 +1,31 @@
+<nav class="breadcrumb">
+  @for (item of items; track $index) {
+    @if (item.link && !isLast($index)) {
+      <a class="breadcrumb-item" [routerLink]="item.link">
+        @if (item.home) {
+          <svg class="breadcrumb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9.5 12 3l9 6.5"></path>
+            <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"></path>
+          </svg>
+        }
+        {{ item.label }}
+      </a>
+    } @else {
+      <span class="breadcrumb-item" [class.current]="isLast($index)">
+        @if (item.home) {
+          <svg class="breadcrumb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9.5 12 3l9 6.5"></path>
+            <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"></path>
+          </svg>
+        }
+        {{ item.label }}
+      </span>
+    }
+
+    @if (!isLast($index)) {
+      <svg class="breadcrumb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 18 6-6-6-6"></path>
+      </svg>
+    }
+  }
+</nav>

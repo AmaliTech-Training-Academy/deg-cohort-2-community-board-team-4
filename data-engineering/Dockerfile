@@ -32,17 +32,27 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 
-# Dedicated non-root user/group.
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+# Dedicated non-root user/group. bash powers the ETL scheduler loop
+# (scripts/run_etl.sh) — python:slim ships dash as /bin/sh, not bash.
+RUN apt-get update && apt-get install -y --no-install-recommends bash \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app && useradd --system --gid app --no-create-home app
 
 # Bring over the prebuilt venv, then the application code.
 COPY --from=build /opt/venv /opt/venv
 COPY --chown=app:app . .
 
 USER app
-
-# Seed sample data on startup ONLY when RUN_SEED=true, then run the normal
-# command. RUN_SEED is set per environment in the compose files, so the same
-# image seeds in dev/staging but never in prod. seed.py also refuses to run
-# when APP_ENV=production, so prod is guarded twice.
-CMD ["sh", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then python scripts/seed.py --reset; fi; exec python etl_pipeline.py"]
+# Startup: optionally seed sample data (idempotent), then hand off to the ETL
+# scheduler loop (scripts/run_etl.sh) which keeps the container Up so compose's
+# restart policy supervises it.
+#
+# Seeding runs ONLY when RUN_SEED=true (set per-environment in compose, never in
+# prod). It is idempotent via a COUNT THRESHOLD on comments: Flyway's migrations
+# already seed a small number of comments (~couple dozen), and seed.py adds 220
+# more — so "comments < 150" means the bulk Faker seed has NOT run yet. A plain
+# "> 0" check would never seed, because Flyway fills comments first.
+# This stops restarts from re-seeding (after seeding, count is ~245 >= 150).
+# seed.py also refuses to run when APP_ENV=production, so prod is guarded twice.
+# `exec` hands PID 1 to run_etl.sh so it receives stop signals.
+CMD ["bash", "-c", "if [ \"$RUN_SEED\" = \"true\" ]; then if python -c \"import sys; from sqlalchemy import text; from utils import get_engine; sys.exit(0 if get_engine().connect().execute(text('SELECT count(*) FROM comments')).scalar() < 220 else 1)\"; then echo 'seeding sample data'; python scripts/seed.py; else echo 'already seeded; skipping'; fi; fi; exec bash scripts/run_etl.sh"]

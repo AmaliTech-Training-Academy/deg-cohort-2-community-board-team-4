@@ -1,0 +1,52 @@
+<div class="error-page-container">
+  <!-- Glowing gradient background blobs -->
+  <div class="bg-blob blob-primary"></div>
+  <div class="bg-blob blob-accent"></div>
+
+  <!-- Main glassmorphic card -->
+  <div class="error-card">
+    <div class="logo-wrapper">
+      <img src="assets/images/logo.svg" alt="Ping Logo" class="app-logo">
+    </div>
+    <div class="card-glow"></div>
+    
+    <!-- Dynamic SVG Illustration -->
+    <div class="illustration-container">
+      @if (errorCode() === '403') {
+        <!-- 403 Forbidden Shield/Lock Lock -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="error-svg lock-svg">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="16" r="2" fill="currentColor"/>
+        </svg>
+      } @else {
+        <!-- 404 Not Found Map/Compass -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="error-svg map-svg">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      }
+      
+      <!-- Big Code Overlay -->
+      <h1 class="error-code">{{ errorCode() }}</h1>
+    </div>
+
+    <!-- Error Text Content -->
+    <div class="text-content">
+      <h2 class="error-title">{{ errorTitle() }}</h2>
+      <p class="error-description">{{ errorDescription() }}</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="card-actions">
+      <a [routerLink]="getHomeLink()" class="btn-home">
+        <span class="btn-text">{{ getHomeLabel() }}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" class="arrow-icon">
+          <line x1="5" y1="12" x2="19" y2="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="12 5 19 12 12 19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

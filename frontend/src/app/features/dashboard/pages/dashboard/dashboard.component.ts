@@ -1,11 +1,16 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { QuillEditorComponent } from 'ngx-quill';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PostService } from '../../../../core/services/post.service';
 import { Post, Category } from '../../../../core/models/post.interface';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ButtonComponent } from '../../../../core/components/button/button.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
+import { HeaderComponent } from '../../../../core/components/header/header.component';
 
 /** Treats HTML whose visible text is empty (e.g. Quill's "<p><br></p>") as required-failing. */
 function htmlNotBlankValidator(control: AbstractControl): ValidationErrors | null {
@@ -17,7 +22,7 @@ function htmlNotBlankValidator(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, QuillEditorComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, QuillEditorComponent, ButtonComponent, BreadcrumbComponent, HeaderComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -25,19 +30,52 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private postService = inject(PostService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
 
-  currentUser = this.authService.currentUser;
 
-  ticker = signal<number>(0);
-  private tickerIntervalId: any;
+  breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Home', home: true },
+  ];
 
   categories = signal<Category[]>([]);
   posts = signal<Post[]>([]);
   totalPosts = signal<number>(0);
   isLoading = signal<boolean>(true);
 
-  // Post creation modal signals and form
+  // Search & pagination state
+  searchQuery = signal<string>('');
+  selectedCategoryId = signal<number | undefined>(undefined);
+  currentPage = signal<number>(1);
+  limit = 4;
+
+  private searchSubject = new Subject<string>();
+  private searchSub?: Subscription;
+  private queryParamsSub?: Subscription;
+
+  // Date filter signals
+  selectedDateOption = signal<string>('all');
+  customFromDate = signal<string>('');
+  customToDate = signal<string>('');
+  isDateDropdownOpen = signal<boolean>(false);
+
+  dateOptions = [
+    { value: 'all', label: 'Anytime' },
+    { value: '24h', label: 'Last 24 hours' },
+    { value: '7d', label: 'Last 7 days' },
+    { value: '30d', label: 'Last 30 days' },
+    { value: 'custom', label: 'Custom Range...' }
+  ];
+
+  selectedDateOptionName = computed(() => {
+    const opt = this.dateOptions.find(o => o.value === this.selectedDateOption());
+    return opt ? opt.label : 'Anytime';
+  });
+
+  // Ticker and modal signals
+  ticker = signal<number>(0);
+  private tickerIntervalId: any;
+
   isCreateModalOpen = signal<boolean>(false);
   isSubmittingPost = signal<boolean>(false);
   postError = signal<string>('');
@@ -68,12 +106,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return cat ? (cat.name === 'Event' ? 'Events' : cat.name) : 'Select';
   });
 
-  searchQuery = signal<string>('');
-  selectedCategoryId = signal<number | undefined>(undefined);
-  currentPage = signal<number>(1);
-  limit = 4;
-
-  isMobileMenuOpen = signal<boolean>(false);
 
   totalPages = computed(() => Math.ceil(this.totalPosts() / this.limit));
   pagesArray = computed(() => {
@@ -86,26 +118,104 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.postService.getCategories().subscribe(cats => {
       this.categories.set(cats);
+      const categoryName = this.route.snapshot.queryParams['category'] || '';
+      if (categoryName) {
+        const found = cats.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        this.selectedCategoryId.set(found ? found.id : undefined);
+      }
     });
-    this.loadPosts();
+
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
+      const keyword = params['keyword'] || '';
+      this.searchQuery.set(keyword);
+
+      const categoryName = params['category'] || '';
+      if (categoryName && this.categories().length > 0) {
+        const found = this.categories().find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        this.selectedCategoryId.set(found ? found.id : undefined);
+      } else if (!categoryName) {
+        this.selectedCategoryId.set(undefined);
+      }
+
+      const dateOption = params['dateOption'] || 'all';
+      this.selectedDateOption.set(dateOption);
+      
+      const from = params['from'] || '';
+      this.customFromDate.set(from);
+
+      const to = params['to'] || '';
+      this.customToDate.set(to);
+
+      const page = Number(params['page']) || 1;
+      this.currentPage.set(page);
+
+      this.loadPostsDirectly(page, keyword, categoryName, from, to);
+    });
+
     this.tickerIntervalId = setInterval(() => {
       this.ticker.update(n => n + 1);
     }, 5000);
+
+    this.searchSub = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(val => {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { keyword: val || null, page: 1 },
+        queryParamsHandling: 'merge'
+      });
+    });
   }
 
   ngOnDestroy(): void {
     if (this.tickerIntervalId) {
       clearInterval(this.tickerIntervalId);
     }
+    if (this.searchSub) {
+      this.searchSub.unsubscribe();
+    }
+    if (this.queryParamsSub) {
+      this.queryParamsSub.unsubscribe();
+    }
   }
 
-  loadPosts(): void {
+  loadPostsDirectly(page: number, keyword: string, categoryName: string, fromParam?: string, toParam?: string): void {
     this.isLoading.set(true);
+
+    let fromDate = fromParam;
+    let toDate = toParam;
+
+    const dateOption = this.selectedDateOption();
+    const now = new Date();
+    const formatDate = (d: Date): string => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    if (dateOption === '24h') {
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      fromDate = formatDate(yesterday);
+      toDate = formatDate(now);
+    } else if (dateOption === '7d') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      fromDate = formatDate(sevenDaysAgo);
+      toDate = formatDate(now);
+    } else if (dateOption === '30d') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      fromDate = formatDate(thirtyDaysAgo);
+      toDate = formatDate(now);
+    }
+
     this.postService.getPosts(
-      this.currentPage(),
+      page,
       this.limit,
-      this.selectedCategoryId(),
-      this.searchQuery()
+      categoryName || undefined,
+      keyword || undefined,
+      fromDate || undefined,
+      toDate || undefined
     ).subscribe({
       next: (res) => {
         this.posts.set(res.posts);
@@ -120,44 +230,87 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   onSearch(event: Event): void {
     event.preventDefault();
-    this.currentPage.set(1);
-    this.loadPosts();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { keyword: this.searchQuery() || null, page: 1 },
+      queryParamsHandling: 'merge'
+    });
   }
 
   onSearchInput(value: string): void {
     this.searchQuery.set(value);
-    if (value === '') {
-      this.currentPage.set(1);
-      this.loadPosts();
-    }
+    this.searchSubject.next(value);
   }
 
   onClearSearch(): void {
     this.searchQuery.set('');
-    this.currentPage.set(1);
-    this.loadPosts();
+    this.searchSubject.next('');
   }
 
   onSelectCategory(catId: number | undefined): void {
-    this.selectedCategoryId.set(catId);
-    this.currentPage.set(1);
-    this.loadPosts();
+    let catName: string | null = null;
+    if (catId !== undefined) {
+      const found = this.categories().find(c => c.id === catId);
+      if (found) {
+        catName = found.name;
+      }
+    }
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category: catName, page: 1 },
+      queryParamsHandling: 'merge'
+    });
   }
 
   onPageChange(page: number): void {
     if (page < 1 || page > this.totalPages()) return;
-    this.currentPage.set(page);
-    this.loadPosts();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page },
+      queryParamsHandling: 'merge'
+    });
   }
 
-  toggleMobileMenu(): void {
-    this.isMobileMenuOpen.update(v => !v);
+  toggleDateDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isDateDropdownOpen.update(v => !v);
   }
 
-  onLogout(): void {
-    this.authService.logout();
-    this.router.navigate(['/auth/login']);
+  selectDateOption(value: string): void {
+    this.isDateDropdownOpen.set(false);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { 
+        dateOption: value || null, 
+        from: null, 
+        to: null, 
+        page: 1 
+      },
+      queryParamsHandling: 'merge'
+    });
   }
+
+  onCustomFromDateChange(value: string): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { from: value || null, page: 1 },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  onCustomToDateChange(value: string): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { to: value || null, page: 1 },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  closeAllDropdowns(): void {
+    this.closeDropdown();
+    this.isDateDropdownOpen.set(false);
+  }
+
 
   openCreateModal(): void {
     this.isCreateModalOpen.set(true);
@@ -259,10 +412,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.clearImage();
         this.selectedCategoryIdForPost.set(null);
 
-        this.selectedCategoryId.set(undefined);
-        this.searchQuery.set('');
-        this.currentPage.set(1);
-        this.loadPosts();
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { category: null, keyword: null, dateOption: null, from: null, to: null, page: 1 }
+        });
       },
       error: (err) => {
         this.isSubmittingPost.set(false);

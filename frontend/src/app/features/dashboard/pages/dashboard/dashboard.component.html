@@ -1,126 +1,141 @@
-<div class="dashboard-container">
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-content">
-      <div class="logo-wrapper">
-        <img src="assets/images/logo.svg" alt="Ping Logo" class="app-logo">
-      </div>
-
-      <!-- Desktop Header Actions -->
-      <div class="header-actions desktop-only">
-        <a class="nav-link-analytics">
-          <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
-          Analytics
-        </a>
-
-        <!-- User Profile Card -->
-        <div class="user-profile-card">
-          <div class="avatar-circle">
-            {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
-          </div>
-          <div class="user-details">
-            <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
-            <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
-          </div>
-        </div>
-
-        <button class="btn-logout" (click)="onLogout()">
-          <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
-          Log out
-        </button>
-      </div>
-
-      <!-- Mobile Hamburger Button -->
-      <button class="btn-hamburger mobile-only" (click)="toggleMobileMenu()" aria-label="Toggle Menu">
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Mobile Navigation Drawer -->
-  @if (isMobileMenuOpen()) {
-    <div class="mobile-drawer-backdrop" (click)="toggleMobileMenu()">
-      <div class="mobile-drawer" (click)="$event.stopPropagation()">
-        <div class="drawer-header">
-          <div class="drawer-user-info">
-            <div class="avatar-circle">
-              {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
-            </div>
-            <div class="user-details">
-              <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
-              <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
-            </div>
-          </div>
-          <button class="btn-close-drawer" (click)="toggleMobileMenu()">✕</button>
-        </div>
-
-        <nav class="drawer-nav">
-          <a class="drawer-nav-item">
-            <img src="assets/icons/chart-column.svg" alt="Analytics Icon" class="nav-icon">
-            Analytics
-          </a>
-          <button class="btn-drawer-logout" (click)="onLogout(); toggleMobileMenu()">
-            <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
-            Log out
-          </button>
-        </nav>
-      </div>
-    </div>
-  }
+<div class="dashboard-container" (click)="closeAllDropdowns()">
+  <app-header />
 
   <!-- Main Body Content -->
   <main class="main-content">
-    
+    <!-- Breadcrumb -->
+    <app-breadcrumb [items]="breadcrumbItems" />
+
     <!-- Unified Search and Create Post Bar -->
     <div class="actions-bar">
       <form class="search-form" (submit)="onSearch($event)">
         <div class="search-bar-container">
           <div class="search-input-wrapper">
-            <input 
-              type="text" 
-              placeholder="Search by title of post..." 
+            <input
+              type="text"
+              placeholder="Search by title of post..."
               [value]="searchQuery()"
-              (input)="onSearchInput(searchQueryInput.value)" 
+              (input)="onSearchInput(searchQueryInput.value)"
               #searchQueryInput
               class="search-input"
-            >
+            />
             @if (searchQuery()) {
-              <button type="button" class="btn-clear-search" (click)="onClearSearch(); searchQueryInput.value = ''">
-                <img src="assets/icons/x.svg" alt="Clear Icon">
+              <button
+                type="button"
+                class="btn-clear-search"
+                (click)="onClearSearch(); searchQueryInput.value = ''"
+              >
+                <img src="assets/icons/x.svg" alt="Clear Icon" />
               </button>
             }
           </div>
           <button type="submit" class="btn-search">
-            <img src="assets/icons/search.svg" alt="Search Icon" class="search-icon">
+            <img
+              src="assets/icons/search.svg"
+              alt="Search Icon"
+              class="search-icon"
+            />
           </button>
         </div>
       </form>
-      <button class="btn-create-post" (click)="openCreateModal()">
+      <app-button variant="primary" (clicked)="openCreateModal()">
         <span class="plus-icon">+</span> Create post
-      </button>
+      </app-button>
     </div>
 
-    <!-- Categories Filter Bar -->
-    <section class="categories-bar">
-      <span class="categories-label">Categories:</span>
-      <div class="categories-pills">
-        <button 
-          class="pill-button" 
-          [class.active]="selectedCategoryId() === undefined" 
-          (click)="onSelectCategory(undefined)"
-        >
-          All
-        </button>
-        @for (category of categories(); track category.id) {
+    <!-- Filters Container (Categories + Date Filter) -->
+    <section class="filters-container" (click)="$event.stopPropagation()">
+      <div class="categories-bar">
+        <span class="categories-label">Categories:</span>
+        <div class="categories-pills">
           <button 
             class="pill-button" 
-            [class.active]="selectedCategoryId() === category.id" 
-            (click)="onSelectCategory(category.id)"
+            [class.active]="selectedCategoryId() === undefined" 
+            (click)="onSelectCategory(undefined)"
           >
-            {{ category.name }}
+            All
           </button>
+          @for (category of categories(); track category.id) {
+            <button 
+              class="pill-button" 
+              [class.active]="selectedCategoryId() === category.id" 
+              (click)="onSelectCategory(category.id)"
+            >
+              {{ category.name }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Date Filter Dropdown & Custom Range Picker -->
+      <div class="date-filter-wrapper">
+        <div class="custom-select-container date-select">
+          <button 
+            type="button" 
+            class="custom-select-trigger" 
+            [class.open]="isDateDropdownOpen()"
+            (click)="toggleDateDropdown($event)"
+          >
+            <span class="filter-trigger-content">
+              <svg class="calendar-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              {{ selectedDateOptionName() }}
+            </span>
+            <span class="chevron-icon">
+              @if (isDateDropdownOpen()) {
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              }
+            </span>
+          </button>
+          
+          @if (isDateDropdownOpen()) {
+            <div class="custom-select-dropdown" (click)="$event.stopPropagation()">
+              @for (opt of dateOptions; track opt.value) {
+                <button 
+                  type="button"
+                  class="custom-select-option" 
+                  [class.selected]="selectedDateOption() === opt.value"
+                  (click)="selectDateOption(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        @if (selectedDateOption() === 'custom') {
+          <div class="custom-date-inputs">
+            <div class="date-input-group">
+              <label for="customFromDate" class="sr-only">From</label>
+              <input 
+                id="customFromDate"
+                type="date" 
+                class="date-picker-input"
+                [value]="customFromDate()"
+                (change)="onCustomFromDateChange(fromDateInput.value)"
+                #fromDateInput
+              >
+            </div>
+            <span class="date-range-separator">to</span>
+            <div class="date-input-group">
+              <label for="customToDate" class="sr-only">To</label>
+              <input 
+                id="customToDate"
+                type="date" 
+                class="date-picker-input"
+                [value]="customToDate()"
+                (change)="onCustomToDateChange(toDateInput.value)"
+                #toDateInput
+              >
+            </div>
+          </div>
         }
       </div>
     </section>
@@ -148,7 +163,11 @@
       } @else if (posts().length === 0) {
         <!-- Empty State -->
         <div class="empty-state">
-          <img src="assets/icons/no-post.svg" alt="No Posts" class="empty-illustration">
+          <img
+            src="assets/icons/no-post.svg"
+            alt="No Posts"
+            class="empty-illustration"
+          />
           <p class="empty-message">No posts have been made yet</p>
         </div>
       } @else {
@@ -158,11 +177,17 @@
             <article class="post-card" [routerLink]="['posts', post.slug]">
               <div class="post-card-header">
                 <h2 class="post-title">{{ post.title }}</h2>
-                <span class="category-badge" [ngClass]="post.category?.name?.toLowerCase() || ''">
-                  {{ post.category?.name === 'Event' ? 'Events' : post.category?.name }}
+                <span
+                  class="category-badge"
+                  [ngClass]="post.category?.name?.toLowerCase() || ''"
+                >
+                  {{
+                    post.category?.name === "Event"
+                      ? "Events"
+                      : post.category?.name
+                  }}
                 </span>
               </div>
-              
               <p class="post-excerpt">{{ getPlainExcerpt(post.content) }}</p>
 
               <footer class="post-card-footer">
@@ -170,17 +195,32 @@
                   <span class="post-author">{{ post.author?.name }}</span>
                   <span class="meta-dot"></span>
                   <span class="post-date">
-                    <svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      class="meta-icon"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <circle cx="12" cy="12" r="10"></circle>
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                     {{ getRelativeTime(post.createdAt) }}
                   </span>
                 </div>
-                
+
                 <div class="meta-right">
                   <span class="comment-count">
-                    <img src="assets/icons/message-circle.svg" alt="Comment Icon" class="meta-icon">
+                    <img
+                      src="assets/icons/message-circle.svg"
+                      alt="Comment Icon"
+                      class="meta-icon"
+                    />
                     {{ post.commentCount }}
                   </span>
                 </div>
@@ -192,19 +232,19 @@
         <!-- Pagination Controls -->
         @if (totalPages() > 1) {
           <nav class="pagination" aria-label="Pagination">
-            <button 
-              class="pagination-btn" 
-              [disabled]="currentPage() === 1" 
+            <button
+              class="pagination-btn"
+              [disabled]="currentPage() === 1"
               (click)="onPageChange(currentPage() - 1)"
             >
               Previous
             </button>
-            
+
             <div class="pagination-numbers">
               @for (page of pagesArray(); track page) {
-                <button 
-                  class="pagination-num-btn" 
-                  [class.active]="currentPage() === page" 
+                <button
+                  class="pagination-num-btn"
+                  [class.active]="currentPage() === page"
                   (click)="onPageChange(page)"
                 >
                   {{ page }}
@@ -212,9 +252,9 @@
               }
             </div>
 
-            <button 
-              class="pagination-btn" 
-              [disabled]="currentPage() === totalPages()" 
+            <button
+              class="pagination-btn"
+              [disabled]="currentPage() === totalPages()"
               (click)="onPageChange(currentPage() + 1)"
             >
               Next

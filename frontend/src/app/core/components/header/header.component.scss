@@ -1,0 +1,270 @@
+/* Header Styling */
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: block;
+}
+
+.app-header {
+  background-color: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.app-logo {
+  height: 38px;
+  display: block;
+}
+
+/* Header Actions Desktop */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-link-analytics {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition-hover);
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    color: var(--color-accent);
+  }
+
+  &.active {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--border-radius-input);
+
+    .nav-icon {
+      filter: brightness(0) invert(1);
+    }
+  }
+}
+
+/* User Profile Card */
+.user-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+}
+
+.user-email {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #c2410c;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-hover);
+
+  .logout-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    color: #9a3412;
+  }
+}
+
+/* Hamburger mobile button */
+.btn-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  height: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  .hamburger-bar {
+    width: 100%;
+    height: 2px;
+    background-color: var(--color-primary);
+    border-radius: 1px;
+    transition: var(--transition-normal);
+  }
+}
+
+/* Mobile Drawer */
+.mobile-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 34, 51, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+}
+
+.mobile-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100%;
+  background-color: var(--color-white);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.drawer-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-close-drawer {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-input);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background-color: var(--color-bg-input);
+  }
+}
+
+.btn-drawer-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  width: 100%;
+  color: #c2410c;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+
+  .logout-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background-color: #fff7ed;
+  }
+}
+
+/* Media Query breakpoints */
+.desktop-only {
+  display: flex !important;
+}
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+}
