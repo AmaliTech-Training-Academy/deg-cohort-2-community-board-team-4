@@ -188,8 +188,7 @@
                   }}
                 </span>
               </div>
-
-              <p class="post-excerpt">{{ post.content }}</p>
+              <p class="post-excerpt">{{ getPlainExcerpt(post.content) }}</p>
 
               <footer class="post-card-footer">
                 <div class="meta-left">
@@ -351,15 +350,40 @@
           </div>
 
           <div class="form-group text-area-group">
-            <textarea 
-              id="postContent"
+            <label class="form-label">Content</label>
+            <quill-editor
               formControlName="content"
               placeholder="Share the details of your post..."
-              class="form-textarea"
-              rows="6"
-            ></textarea>
+              class="post-content-editor"
+            ></quill-editor>
             @if (postForm.get('content')?.touched && postForm.get('content')?.errors?.['required']) {
               <div class="validation-error">Content is required</div>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="postImage" class="form-label">Cover Image</label>
+
+            @if (imagePreviewUrl()) {
+              <div class="image-preview">
+                <img [src]="imagePreviewUrl()" alt="Selected cover image preview">
+                <button type="button" class="btn-remove-image" (click)="removeImage()">Remove</button>
+              </div>
+            }
+
+            <input
+              #imageInput
+              id="postImage"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="form-file-input"
+              (change)="onImageSelected($event)"
+            >
+
+            @if (imageError()) {
+              <div class="validation-error">{{ imageError() }}</div>
+            } @else if (postForm.get('image')?.touched && postForm.get('image')?.errors?.['required']) {
+              <div class="validation-error">A cover image is required</div>
             }
           </div>
 

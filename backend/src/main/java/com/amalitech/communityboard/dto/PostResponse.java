@@ -9,6 +9,7 @@ public class PostResponse {
     private String title;
     private String slug;
     private String content;
+    private String imageUrl;
     private String categoryName;
     private Long categoryId;
     private String authorName;

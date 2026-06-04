@@ -30,9 +30,11 @@
           </span>
         </header>
 
-        <div class="detail-body">
-          <p>{{ post()?.content }}</p>
-        </div>
+        @if (post()?.imageUrl) {
+          <img class="detail-image" [src]="post()?.imageUrl" [alt]="post()?.title">
+        }
+
+        <div class="detail-body" [innerHTML]="post()?.content"></div>
 
         <div class="detail-meta">
           <span class="author-name">{{ post()?.author?.name }}</span>

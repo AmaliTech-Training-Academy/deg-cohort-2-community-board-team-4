@@ -34,6 +34,14 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: communityboard-secret-key-amalitech-2024
+      # Cloudinary (post image uploads). The three credentials are injected by
+      # cd-dev.yml from GitHub Actions secrets — NOT committed here. The two
+      # overrides below are non-sensitive and static for dev.
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_UPLOAD_FOLDER: community-board/posts
+      CLOUDINARY_PLACEHOLDER_URL: https://res.cloudinary.com/demo/image/upload/v1/community-board/placeholder.png
     # Backend binds :8080 only after the Spring context (incl. Flyway) is ready,
     # so a 200 here means the schema exists. /api-docs is permitAll, no auth.
     healthcheck:

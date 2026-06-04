@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,6 +28,7 @@ public class PostService {
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     public Page<PostResponse> getAllPosts(int page, int size) {
         int safePage = Math.max(page, 0);
@@ -69,22 +71,31 @@ public class PostService {
         return getPostBySlug(identifier);
     }
 
-    public PostResponse createPost(PostRequest request, Long userId) {
+    public PostResponse createPost(PostRequest request, MultipartFile image, Long userId) {
         User author = getUser(userId);
         Category category = getCategory(request.getCategoryId());
+        ImageUploadResult uploaded = cloudinaryService.upload(image);
         Post post = Post.builder()
                 .title(request.getTitle())
                 .slug(generateUniqueSlug(request.getTitle()))
                 .content(request.getContent())
+                .imageUrl(uploaded.url())
+                .imagePublicId(uploaded.publicId())
                 .author(author)
                 .category(category)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-        return toResponse(postRepository.save(post));
+        try {
+            return toResponse(postRepository.save(post));
+        } catch (RuntimeException ex) {
+            // Roll back the just-uploaded image so we don't leak orphaned assets.
+            cloudinaryService.delete(uploaded.publicId());
+            throw ex;
+        }
     }
 
-    public PostResponse updatePost(Long id, PostRequest request, Long userId) {
+    public PostResponse updatePost(Long id, PostRequest request, MultipartFile image, Long userId) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id " + id));
         if (!post.getAuthor().getId().equals(userId)) {
@@ -94,6 +105,15 @@ public class PostService {
         post.setContent(request.getContent());
         post.setUpdatedAt(LocalDateTime.now());
         post.setCategory(getCategory(request.getCategoryId()));
+
+        // Image is optional on update: replace it only when a new file is supplied.
+        if (image != null && !image.isEmpty()) {
+            String previousPublicId = post.getImagePublicId();
+            ImageUploadResult uploaded = cloudinaryService.upload(image);
+            post.setImageUrl(uploaded.url());
+            post.setImagePublicId(uploaded.publicId());
+            cloudinaryService.delete(previousPublicId);
+        }
         return toResponse(postRepository.save(post));
     }
 
@@ -106,6 +126,7 @@ public class PostService {
             throw new ForbiddenException("Not authorized to delete this post");
         }
         postRepository.delete(post);
+        cloudinaryService.delete(post.getImagePublicId());
     }
 
     private User getUser(Long userId) {
@@ -171,6 +192,7 @@ public class PostService {
                 .title(post.getTitle())
                 .slug(post.getSlug())
                 .content(post.getContent())
+                .imageUrl(post.getImageUrl())
                 .categoryName(post.getCategory() != null ? post.getCategory().getName() : null)
                 .categoryId(post.getCategory() != null ? post.getCategory().getId() : null)
                 .authorName(post.getAuthor().getName())

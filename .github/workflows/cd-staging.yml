@@ -1,0 +1,130 @@
+name: CD · Deploy to Staging
+
+# ============================================================================
+# Continuous deployment to the STAGING (test) EC2 host.
+#
+# Trigger: runs after the "CI Pipeline" workflow completes on the `test` branch
+# — i.e. once the :test-latest images have been pushed to Docker Hub. Only
+# proceeds if that CI run SUCCEEDED.
+#
+# Strategy (mirrors cd-dev.yml, no source code on the box):
+#   1. validate — fail fast if any EC2 / Docker Hub config is missing.
+#   2. deploy   — copy ONLY docker-compose-staging.yml to the EC2, then over SSH:
+#                   * export REGISTRY=<namespace> (the staging compose uses
+#                     ${REGISTRY}/... env interpolation, not a sed placeholder)
+#                   * docker login
+#                   * docker compose pull  (grabs the new :test-latest tag)
+#                   * docker compose up -d
+#
+# Logging: docker-compose-staging.yml uses the awslogs driver -> CloudWatch.
+# The EC2 host needs the IAM instance profile + log group from Terraform
+# (devops/infra). AWS_REGION must match the region the log group lives in.
+#
+# Required config (repository SECRETS):
+#   EC2_TEST_HOST, EC2_TEST_USER, EC2_TEST_SSH_KEY
+#   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+#   AWS_REGION            (must match the Terraform log group's region)
+#   EC2_SSH_PORT          (optional, default 22)
+#   EC2_TEST_APP_DIR      (optional, default 'communityboard')
+# ============================================================================
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-staging
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Pre-flight checks
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify required secrets
+        env:
+          EC2_TEST_HOST: ${{ secrets.EC2_TEST_HOST }}
+          EC2_TEST_USER: ${{ secrets.EC2_TEST_USER }}
+          EC2_TEST_SSH_KEY: ${{ secrets.EC2_TEST_SSH_KEY }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          missing=()
+          [ -z "$EC2_TEST_HOST" ]      && missing+=("secret EC2_TEST_HOST")
+          [ -z "$EC2_TEST_USER" ]      && missing+=("secret EC2_TEST_USER")
+          [ -z "$EC2_TEST_SSH_KEY" ]   && missing+=("secret EC2_TEST_SSH_KEY")
+          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("secret DOCKERHUB_USERNAME")
+          [ -z "$DOCKERHUB_TOKEN" ]    && missing+=("secret DOCKERHUB_TOKEN")
+          [ -z "$AWS_REGION" ]         && missing+=("secret AWS_REGION")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf '::error::Missing required CD config: %s\n' "${missing[*]}"
+            exit 1
+          fi
+          echo "✅ All required deploy config is present."
+
+  deploy:
+    name: Deploy to Staging EC2
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - name: Checkout compose file
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          sparse-checkout: docker-compose-staging.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Copy compose file to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_TEST_HOST }}
+          username: ${{ secrets.EC2_TEST_USER }}
+          key: ${{ secrets.EC2_TEST_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          source: docker-compose-staging.yml
+          target: ${{ secrets.EC2_TEST_APP_DIR || 'communityboard' }}
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          REGISTRY_NS: ${{ secrets.DOCKERHUB_USERNAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          APP_DIR: ${{ secrets.EC2_TEST_APP_DIR || 'communityboard' }}
+        with:
+          host: ${{ secrets.EC2_TEST_HOST }}
+          username: ${{ secrets.EC2_TEST_USER }}
+          key: ${{ secrets.EC2_TEST_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,REGISTRY_NS,AWS_REGION,APP_DIR
+          script: |
+            set -euo pipefail
+            APP_DIR="${APP_DIR/#\~/$HOME}"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
+            # The compose references ${REGISTRY}/... — export it so the image
+            # refs resolve to the Docker Hub namespace. AWS_REGION drives the
+            # awslogs driver (must match the Terraform log group's region).
+            export REGISTRY="$REGISTRY_NS"
+            export AWS_REGION
+
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+            docker compose -f docker-compose-staging.yml pull
+            docker compose -f docker-compose-staging.yml up -d
+
+            docker logout || true
+            docker image prune -f || true
+            docker compose -f docker-compose-staging.yml ps
