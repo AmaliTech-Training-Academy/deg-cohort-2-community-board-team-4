@@ -31,13 +31,19 @@ jobs:
           EC2_DEV_SSH_KEY: ${{ secrets.EC2_DEV_SSH_KEY }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
           missing=()
-          [ -z "$EC2_DEV_HOST" ]       && missing+=("secret EC2_DEV_HOST")
-          [ -z "$EC2_DEV_USER" ]       && missing+=("var EC2_DEV_USER")
-          [ -z "$EC2_DEV_SSH_KEY" ]    && missing+=("secret EC2_DEV_SSH_KEY")
-          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("secret DOCKERHUB_USERNAME")
-          [ -z "$DOCKERHUB_TOKEN" ]    && missing+=("secret DOCKERHUB_TOKEN")
+          [ -z "$EC2_DEV_HOST" ]         && missing+=("secret EC2_DEV_HOST")
+          [ -z "$EC2_DEV_USER" ]         && missing+=("var EC2_DEV_USER")
+          [ -z "$EC2_DEV_SSH_KEY" ]      && missing+=("secret EC2_DEV_SSH_KEY")
+          [ -z "$DOCKERHUB_USERNAME" ]   && missing+=("secret DOCKERHUB_USERNAME")
+          [ -z "$DOCKERHUB_TOKEN" ]      && missing+=("secret DOCKERHUB_TOKEN")
+          [ -z "$CLOUDINARY_CLOUD_NAME" ] && missing+=("secret CLOUDINARY_CLOUD_NAME")
+          [ -z "$CLOUDINARY_API_KEY" ]    && missing+=("secret CLOUDINARY_API_KEY")
+          [ -z "$CLOUDINARY_API_SECRET" ] && missing+=("secret CLOUDINARY_API_SECRET")
           if [ ${#missing[@]} -gt 0 ]; then
             printf '::error::Missing required CD config: %s\n' "${missing[*]}"
             exit 1
@@ -81,12 +87,15 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || 'communityboard' }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         with:
           host: ${{ secrets.EC2_DEV_HOST }}
           username: ${{ secrets.EC2_DEV_USER }}
           key: ${{ secrets.EC2_DEV_SSH_KEY }}
           port: ${{ secrets.EC2_SSH_PORT || 22 }}
-          envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,APP_DIR
+          envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,APP_DIR,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
           script: |
             set -euo pipefail
             # Bash does NOT expand a leading ~ from a variable, so do it ourselves.
@@ -95,9 +104,22 @@ jobs:
             cd "$APP_DIR"
 
             # Inject the Docker Hub namespace into the image references.
+            # (Safe to sed: a Docker Hub namespace has no sed-special chars.)
             sed -i "s#__REGISTRY__#${DOCKERHUB_USERNAME}#g" docker-compose-dev.yml
             echo "----- image references -----"
             grep 'image:' docker-compose-dev.yml
+
+            # Write the Cloudinary credentials to .env (mode 600) for compose to
+            # substitute. Done with a here-doc, NOT sed, so any special chars in
+            # the secret are written verbatim and never appear in the command log.
+            umask 077
+            cat > .env <<EOF
+            CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            EOF
+            echo "----- .env keys written (values hidden) -----"
+            cut -d= -f1 .env
 
             # Authenticate so the pull works for private repos.
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
