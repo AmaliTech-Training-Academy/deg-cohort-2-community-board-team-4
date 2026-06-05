@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-register',
@@ -22,7 +23,8 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder, 
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private notificationService: NotificationService
   ) {
     this.registerForm = this.fb.group({
       fullName: ['', [Validators.required, Validators.pattern(/^[a-zA-Z\s]+$/)]],
@@ -88,6 +90,7 @@ export class RegisterComponent {
     this.authService.register(fullName, email, password).subscribe({
       next: () => {
         this.isLoading = false;
+        this.notificationService.show('Authenticated successfully');
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {

@@ -15,15 +15,17 @@
       }
 
       <!-- User Profile Card -->
-      <div class="user-profile-card">
-        <div class="avatar-circle">
-          {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+      @if (currentUser()) {
+        <div class="user-profile-card">
+          <div class="avatar-circle">
+            {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() }}
+          </div>
+          <div class="user-details">
+            <span class="user-name">{{ currentUser()?.name }}</span>
+            <span class="user-email">{{ currentUser()?.email }}</span>
+          </div>
         </div>
-        <div class="user-details">
-          <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
-          <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
-        </div>
-      </div>
+      }
 
       <button class="btn-logout" (click)="onLogout()">
         <img src="assets/icons/log-out.svg" alt="Logout Icon" class="logout-icon">
@@ -45,15 +47,17 @@
   <div class="mobile-drawer-backdrop" (click)="toggleMobileMenu()">
     <div class="mobile-drawer" (click)="$event.stopPropagation()">
       <div class="drawer-header">
-        <div class="drawer-user-info">
-          <div class="avatar-circle">
-            {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() || 'JD' }}
+        @if (currentUser()) {
+          <div class="drawer-user-info">
+            <div class="avatar-circle">
+              {{ currentUser()?.name?.slice(0, 2)?.toUpperCase() }}
+            </div>
+            <div class="user-details">
+              <span class="user-name">{{ currentUser()?.name }}</span>
+              <span class="user-email">{{ currentUser()?.email }}</span>
+            </div>
           </div>
-          <div class="user-details">
-            <span class="user-name">{{ currentUser()?.name || 'John Doe' }}</span>
-            <span class="user-email">{{ currentUser()?.email || 'johndoe@gmail.com' }}</span>
-          </div>
-        </div>
+        }
         <button class="btn-close-drawer" (click)="toggleMobileMenu()">✕</button>
       </div>
 

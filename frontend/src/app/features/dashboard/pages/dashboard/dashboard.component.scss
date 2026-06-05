@@ -561,7 +561,7 @@ app-breadcrumb {
 /* Pagination Control Layout */
 .pagination {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   gap: 1.5rem;
   margin-top: 1rem;

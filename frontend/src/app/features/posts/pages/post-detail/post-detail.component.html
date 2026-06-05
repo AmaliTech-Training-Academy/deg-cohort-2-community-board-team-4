@@ -1,20 +1,9 @@
-<div class="detail-container">
+<app-header />
+<main class="detail-container">
   <div class="detail-content-wrapper">
     
     <!-- Figma Styled Breadcrumbs -->
-    <nav class="breadcrumbs">
-      <a routerLink="/dashboard" class="breadcrumb-item">
-        <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-        Home
-      </a>
-      <span class="breadcrumb-separator">
-        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </span>
-      <span class="breadcrumb-current">Post Details</span>
-    </nav>
+    <app-breadcrumb [items]="breadcrumbItems" />
 
     <!-- Post Details Section -->
     @if (isLoading()) {
@@ -103,7 +92,12 @@
           </div>
         } @else if (comments().length === 0) {
           <div class="no-comments-state">
-            <p>No comments yet. Be the first to share your thoughts!</p>
+            <img
+              src="assets/icons/no-post.svg"
+              alt="No Comments"
+              class="empty-illustration"
+            />
+            <p class="empty-message">No Comments yet</p>
           </div>
         } @else {
           <div class="comments-list">
@@ -185,4 +179,4 @@
       </div>
     }
   </div>
-</div>
+</main>

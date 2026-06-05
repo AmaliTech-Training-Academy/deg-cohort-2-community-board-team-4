@@ -5,11 +5,13 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { PostService } from '../../../../core/services/post.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Post, Comment } from '../../../../core/models/post.interface';
+import { HeaderComponent } from '../../../../core/components/header/header.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../../../core/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-post-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, HeaderComponent, BreadcrumbComponent],
   templateUrl: './post-detail.component.html',
   styleUrl: './post-detail.component.scss'
 })
@@ -21,6 +23,11 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
 
   currentUser = this.authService.currentUser;
+
+  breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Home', link: '/dashboard', home: true },
+    { label: 'Post Details' }
+  ];
 
   ticker = signal<number>(0);
   private tickerIntervalId: any;
