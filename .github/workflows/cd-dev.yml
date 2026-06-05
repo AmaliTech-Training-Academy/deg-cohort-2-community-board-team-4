@@ -36,14 +36,14 @@ jobs:
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
           missing=()
-          [ -z "$EC2_DEV_HOST" ]       && missing+=("secret EC2_DEV_HOST")
-          [ -z "$EC2_DEV_USER" ]       && missing+=("var EC2_DEV_USER")
-          [ -z "$EC2_DEV_SSH_KEY" ]    && missing+=("secret EC2_DEV_SSH_KEY")
-          [ -z "$DOCKERHUB_USERNAME" ] && missing+=("secret DOCKERHUB_USERNAME")
-          [ -z "$DOCKERHUB_TOKEN" ]    && missing+=("secret DOCKERHUB_TOKEN")
-          [ -z "$CLOUDINARY_CLOUD_NAME" ]  && missing+=("secret CLOUDINARY_CLOUD_NAME")
-          [ -z "$CLOUDINARY_API_KEY" ]     && missing+=("secret CLOUDINARY_API_KEY")
-          [ -z "$CLOUDINARY_API_SECRET" ]  && missing+=("secret CLOUDINARY_API_SECRET")
+          [ -z "$EC2_DEV_HOST" ]         && missing+=("secret EC2_DEV_HOST")
+          [ -z "$EC2_DEV_USER" ]         && missing+=("var EC2_DEV_USER")
+          [ -z "$EC2_DEV_SSH_KEY" ]      && missing+=("secret EC2_DEV_SSH_KEY")
+          [ -z "$DOCKERHUB_USERNAME" ]   && missing+=("secret DOCKERHUB_USERNAME")
+          [ -z "$DOCKERHUB_TOKEN" ]      && missing+=("secret DOCKERHUB_TOKEN")
+          [ -z "$CLOUDINARY_CLOUD_NAME" ] && missing+=("secret CLOUDINARY_CLOUD_NAME")
+          [ -z "$CLOUDINARY_API_KEY" ]    && missing+=("secret CLOUDINARY_API_KEY")
+          [ -z "$CLOUDINARY_API_SECRET" ] && missing+=("secret CLOUDINARY_API_SECRET")
           if [ ${#missing[@]} -gt 0 ]; then
             printf '::error::Missing required CD config: %s\n' "${missing[*]}"
             exit 1
@@ -87,9 +87,6 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           APP_DIR: ${{ secrets.EC2_DEV_APP_DIR || 'communityboard' }}
-          # Cloudinary credentials — written to a .env file on the host (NOT
-          # sed'd into the compose). docker compose auto-loads .env for ${VAR}
-          # substitution, so secrets with #, /, & or \ are handled safely.
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}

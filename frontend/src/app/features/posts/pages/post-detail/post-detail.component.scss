@@ -106,6 +106,7 @@
   gap: 1.25rem;
   text-align: left;
   padding: 1rem 0;
+  min-width: 0;
 }
 
 .detail-header {
@@ -155,15 +156,59 @@
   }
 }
 
+.detail-image {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin: 1.25rem 0;
+}
+
 .detail-body {
   font-size: 1rem;
   line-height: 1.65;
   color: #395362;
   margin: 0;
+  // Allow the flex item to shrink and wrap instead of forcing one long line.
+  min-width: 0;
+  overflow-wrap: break-word;
+  // Preserve line breaks for legacy plain-text posts; harmless for rich HTML content.
+  white-space: pre-line;
 
   p {
-    margin: 0;
-    white-space: pre-wrap;
+    margin: 0 0 1rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--color-primary);
+    line-height: 1.3;
+    margin: 1.25rem 0 0.5rem;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.25rem;
+  }
+
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  strong {
+    font-weight: 600;
   }
 }
 

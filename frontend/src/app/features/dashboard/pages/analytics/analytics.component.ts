@@ -37,13 +37,13 @@ export class AnalyticsComponent implements OnInit {
   contributors = signal<Contributor[]>([]);
 
   categoryData = signal<ChartData<'bar'> | null>(null);
-  weekdayData = signal<ChartData<'bar'> | null>(null);
+  weekdayData = signal<ChartData<'line'> | null>(null);
 
   private readonly barColor = '#3d5567';
   private readonly avgColor = '#3b5bdb';
 
-  categoryOptions = this.buildOptions();
-  weekdayOptions = this.buildOptions();
+  categoryOptions = this.buildOptions() as ChartOptions<'bar'>;
+  weekdayOptions = this.buildOptions() as ChartOptions<'line'>;
 
   ngOnInit(): void {
     const getWeekday = (dateStr: string): string => {
@@ -78,22 +78,29 @@ export class AnalyticsComponent implements OnInit {
           ]
         });
 
-        // Map Weekday chart data (sorted chronologically)
-        const sortedDaily = [...(data.dailyPostCounts || [])].sort(
-          (a, b) => a.day.localeCompare(b.day)
+        // Aggregate post counts by weekday (Sun -> Sat), avoiding duplicate day labels
+        const weekdayOrder = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
+        const weekdayTotals = new Map<string, number>(
+          weekdayOrder.map(label => [label, 0])
         );
-        const dailyLabels = sortedDaily.map(d => getWeekday(d.day));
-        const dailyValues = sortedDaily.map(d => d.postCount);
+        (data.dailyPostCounts || []).forEach(d => {
+          const label = getWeekday(d.day);
+          weekdayTotals.set(label, (weekdayTotals.get(label) || 0) + d.postCount);
+        });
+        const dailyLabels = weekdayOrder;
+        const dailyValues = weekdayOrder.map(label => weekdayTotals.get(label) || 0);
 
         this.weekdayData.set({
           labels: dailyLabels,
           datasets: [
             {
               data: dailyValues,
+              borderColor: this.barColor,
               backgroundColor: this.barColor,
-              borderRadius: 2,
-              barPercentage: 0.5,
-              categoryPercentage: 0.7,
+              pointBackgroundColor: this.barColor,
+              pointRadius: 3,
+              tension: 0.3,
+              fill: false,
             }
           ]
         });

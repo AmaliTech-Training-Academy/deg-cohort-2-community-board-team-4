@@ -79,7 +79,7 @@
             @if (weekdayData()) {
               <canvas
                 baseChart
-                type="bar"
+                type="line"
                 [data]="weekdayData()!"
                 [options]="weekdayOptions"
                 [plugins]="[avgLinePlugin]"

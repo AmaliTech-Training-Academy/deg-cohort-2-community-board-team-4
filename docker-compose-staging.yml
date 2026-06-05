@@ -20,7 +20,7 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-region: ${AWS_REGION:-us-west-1}
         awslogs-group: test
         awslogs-stream: postgres
         awslogs-create-group: "true"   
@@ -50,7 +50,7 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-region: ${AWS_REGION:-us-west-1}
         awslogs-group: test
         awslogs-stream: backend
         awslogs-create-group: "true"
@@ -64,7 +64,7 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-region: ${AWS_REGION:-us-west-1}
         awslogs-group: test
         awslogs-stream: frontend
         awslogs-create-group: "true"
@@ -87,7 +87,7 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-region: ${AWS_REGION:-eu-west-1}
+        awslogs-region: ${AWS_REGION:-us-west-1}
         awslogs-group: test
         awslogs-stream: data-engineering
         awslogs-create-group: "true"

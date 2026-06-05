@@ -22,6 +22,7 @@ export interface Post {
   title: string;
   slug: string;
   content: string;
+  imageUrl?: string;
   categoryId: number;
   authorId: number;
   createdAt: string;

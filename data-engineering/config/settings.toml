@@ -17,17 +17,17 @@ random_seed = 42
 
 # Categories: posts are distributed evenly across these (round-robin).
 [[seed.categories]]
-name = "NEWS"
+name = "news"
 description = "Community news and announcements"
 
 [[seed.categories]]
-name = "EVENT"
+name = "event"
 description = "Upcoming events and gatherings"
 
 [[seed.categories]]
-name = "DISCUSSION"
+name = "discussion"
 description = "Open discussions and questions"
 
 [[seed.categories]]
-name = "ALERT"
+name = "alert"
 description = "Time-sensitive alerts and notices"

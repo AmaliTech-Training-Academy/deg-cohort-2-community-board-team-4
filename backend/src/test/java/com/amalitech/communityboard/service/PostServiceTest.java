@@ -24,6 +24,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -47,9 +49,14 @@ class PostServiceTest {
     private CommentRepository commentRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private CloudinaryService cloudinaryService;
 
     @InjectMocks
     private PostService postService;
+
+    private static final MultipartFile IMAGE = new MockMultipartFile(
+            "image", "pic.jpg", "image/jpeg", new byte[]{1, 2, 3});
 
     private User author;
     private User otherUser;
@@ -180,16 +187,20 @@ class PostServiceTest {
             PostRequest request = new PostRequest("New title", "New content", 10L);
             when(userRepository.findById(1L)).thenReturn(Optional.of(author));
             when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+            when(cloudinaryService.upload(any()))
+                    .thenReturn(new ImageUploadResult("https://img/pic.jpg", "posts/pic"));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            PostResponse result = postService.createPost(request, 1L);
+            PostResponse result = postService.createPost(request, IMAGE, 1L);
 
             ArgumentCaptor<Post> saved = ArgumentCaptor.forClass(Post.class);
             verify(postRepository).save(saved.capture());
             assertThat(saved.getValue().getTitle()).isEqualTo("New title");
             assertThat(saved.getValue().getAuthor()).isEqualTo(author);
             assertThat(saved.getValue().getCategory()).isEqualTo(category);
+            assertThat(saved.getValue().getImageUrl()).isEqualTo("https://img/pic.jpg");
             assertThat(result.getCategoryName()).isEqualTo("General");
+            assertThat(result.getImageUrl()).isEqualTo("https://img/pic.jpg");
         }
 
         @Test
@@ -199,7 +210,7 @@ class PostServiceTest {
             when(userRepository.findById(1L)).thenReturn(Optional.of(author));
             when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> postService.createPost(request, 1L))
+            assertThatThrownBy(() -> postService.createPost(request, IMAGE, 1L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Category not found with id 99");
             verify(postRepository, never()).save(any());
@@ -218,7 +229,7 @@ class PostServiceTest {
             when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            PostResponse result = postService.updatePost(100L, request, 1L);
+            PostResponse result = postService.updatePost(100L, request, null, 1L);
 
             assertThat(result.getTitle()).isEqualTo("Updated");
             assertThat(result.getContent()).isEqualTo("Updated body");
@@ -231,7 +242,7 @@ class PostServiceTest {
             PostRequest request = new PostRequest("Updated", "Updated body", null);
             when(postRepository.findById(100L)).thenReturn(Optional.of(post));
 
-            assertThatThrownBy(() -> postService.updatePost(100L, request, 2L))
+            assertThatThrownBy(() -> postService.updatePost(100L, request, null, 2L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Not authorized to update this post");
             verify(postRepository, never()).save(any());
@@ -243,7 +254,7 @@ class PostServiceTest {
             PostRequest request = new PostRequest("Updated", "Updated body", null);
             when(postRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> postService.updatePost(999L, request, 1L))
+            assertThatThrownBy(() -> postService.updatePost(999L, request, null, 1L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Post not found with id 999");
         }
